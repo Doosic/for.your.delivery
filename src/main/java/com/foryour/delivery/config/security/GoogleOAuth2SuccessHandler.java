@@ -7,6 +7,7 @@ import com.foryour.delivery.config.jwt.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -17,6 +18,7 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
   private final UserService userService;
@@ -29,21 +31,35 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
       HttpServletResponse response,
       Authentication authentication
   ) throws IOException {
-    OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
-    String email = oauthUser.getAttribute("email");
-    String name = oauthUser.getAttribute("name");
+    try {
+      OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
+      String email = oauthUser.getAttribute("email");
+      String name = oauthUser.getAttribute("name");
 
-    if (email == null || email.isBlank()) {
-      response.sendRedirect(properties.getFrontendBaseUrl() + "/app/login?error=google_email_missing");
-      return;
+      if (email == null || email.isBlank()) {
+        redirectToLogin(response, "google_email_missing");
+        return;
+      }
+
+      UserResponseVO user = userService.findOrCreateGoogleUser(email, name);
+      jwtTokenProvider.issueCookies(user, response);
+      response.sendRedirect(UriComponentsBuilder
+          .fromUriString(properties.getFrontendBaseUrl())
+          .path("/app/complete")
+          .queryParam("provider", "google")
+          .build(true)
+          .toUriString());
+    } catch (RuntimeException error) {
+      log.error("Google account linking failed", error);
+      redirectToLogin(response, "google_account_link_failed");
     }
+  }
 
-    UserResponseVO user = userService.findOrCreateGoogleUser(email, name);
-    jwtTokenProvider.issueCookies(user, response);
+  private void redirectToLogin(HttpServletResponse response, String error) throws IOException {
     response.sendRedirect(UriComponentsBuilder
         .fromUriString(properties.getFrontendBaseUrl())
-        .path("/app/complete")
-        .queryParam("provider", "google")
+        .path("/app/login")
+        .queryParam("error", error)
         .build(true)
         .toUriString());
   }

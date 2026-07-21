@@ -39,6 +39,7 @@ public class JwtTokenProvider {
     Token token = generateTokenHS512(
         user.getEmail(),
         cProperties.getJwt().getAccessTimeoutMin(),
+        cProperties.getJwt().getRefreshTimeoutMin(),
         cProperties.getJwt().getSecret(),
         claims
     );
@@ -48,20 +49,21 @@ public class JwtTokenProvider {
 
   public Token generateTokenHS512(
       String adminId,
-      Integer timeOutMin,
+      Integer accessTimeoutMin,
+      Integer refreshTimeoutMin,
       String secret,
       Map<String, Object> claims
   ){
     String accessToken = Jwts.builder()
         .setClaims(claims)
         .setId(adminId)
-        .setExpiration(new Date(System.currentTimeMillis() + this.getTokenExpirationTime(timeOutMin)))
+        .setExpiration(new Date(System.currentTimeMillis() + this.getTokenExpirationTime(accessTimeoutMin)))
         .signWith(getSigningKey(secret), SignatureAlgorithm.HS512)
         .compact();
 
     String refreshToken = Jwts.builder()
         .setId(adminId)
-        .setExpiration(new Date(System.currentTimeMillis() + this.getTokenExpirationTime(timeOutMin)))
+        .setExpiration(new Date(System.currentTimeMillis() + this.getTokenExpirationTime(refreshTimeoutMin)))
         .signWith(getSigningKey(secret), SignatureAlgorithm.HS512)
         .compact();
 
@@ -87,7 +89,7 @@ public class JwtTokenProvider {
   ) {
     Cookie cookieAccess = new Cookie(accessHeader, accessToken);
     cookieAccess.setPath("/");
-    cookieAccess.setMaxAge(60 * 60 * timeOutMin);
+    cookieAccess.setMaxAge(60 * timeOutMin);
     cookieAccess.setHttpOnly(true);
     response.addCookie(cookieAccess);
   }
@@ -100,7 +102,7 @@ public class JwtTokenProvider {
   ) {
     Cookie cookieRefresh = new Cookie(refreshHeader, refreshToken);
     cookieRefresh.setPath("/");
-    cookieRefresh.setMaxAge(60 * 60 * timeOutMin);
+    cookieRefresh.setMaxAge(60 * timeOutMin);
     cookieRefresh.setHttpOnly(true);
     response.addCookie(cookieRefresh);
   }

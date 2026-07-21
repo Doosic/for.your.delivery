@@ -1,6 +1,6 @@
 import { LockKeyhole, Mail } from 'lucide-react'
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import BrandLogo from '@/components/BrandLogo.jsx'
 import authService from '@/services/authService.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
@@ -8,11 +8,24 @@ import { useAuth } from '@/shared/hooks/useAuth.jsx'
 
 function LoginPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const alert = useAlert()
   const { saveUser } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    const oauthError = searchParams.get('error')
+    if (!oauthError) return
+
+    const message = oauthError === 'google_email_missing'
+      ? 'Google 계정에서 이메일 정보를 받지 못했습니다.'
+      : oauthError === 'google_account_link_failed'
+        ? 'Google 계정을 FUB 회원 정보와 연결하지 못했습니다.'
+        : 'Google 로그인을 완료하지 못했습니다.'
+    alert.alertWarning('Google 로그인', message)
+  }, [alert, searchParams])
 
   const handleSubmit = async (event) => {
     event.preventDefault()

@@ -1,6 +1,7 @@
 package com.foryour.delivery.client.imports;
 
 import com.foryour.delivery.client.calendar.GoogleCalendarService;
+import com.foryour.delivery.client.member.MemberFeatureService;
 import com.foryour.delivery.client.user.bean.UserResponseVO;
 import com.foryour.delivery.common.APIDataResponse;
 import com.foryour.delivery.common.BaseController;
@@ -21,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ImportController extends BaseController {
 
   private final GoogleCalendarService googleCalendarService;
+  private final MemberFeatureService memberFeatureService;
   private final Map<Long, Set<Long>> committedItems = new ConcurrentHashMap<>();
 
   @GetMapping("/wp/import-connections")
@@ -92,7 +94,12 @@ public class ImportController extends BaseController {
     Long userSq = getSessionInfo().getUserSq();
     List<Long> itemSqs = request.importedItemSqs() == null ? List.of() : request.importedItemSqs();
     committedItems.computeIfAbsent(userSq, ignored -> ConcurrentHashMap.newKeySet()).addAll(itemSqs);
-    return APIDataResponse.of(Map.of("committedCount", itemSqs.size(), "live", false));
+    List<Long> inventoryItemSqs = memberFeatureService.importInventoryItems(userSq, itemSqs);
+    return APIDataResponse.of(Map.of(
+        "committedCount", itemSqs.size(),
+        "inventoryItemSqs", inventoryItemSqs,
+        "live", false
+    ));
   }
 
   private Map<String, Object> connection(

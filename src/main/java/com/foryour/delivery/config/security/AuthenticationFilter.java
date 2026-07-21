@@ -85,6 +85,7 @@ public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter i
     Token jwtToken = jwtTokenProvider.generateTokenHS512(
         user.getEmail(),
         cProperties.getJwt().getAccessTimeoutMin(),
+        cProperties.getJwt().getRefreshTimeoutMin(),
         cProperties.getJwt().getSecret(),
         claims);
 

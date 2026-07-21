@@ -67,6 +67,7 @@ public class UserController extends BaseController {
     Token jwtToken = jwtTokenProvider.generateTokenHS512(
         userResponse.getEmail(),
         cProperties.getJwt().getAccessTimeoutMin(),
+        cProperties.getJwt().getRefreshTimeoutMin(),
         cProperties.getJwt().getSecret(),
         claims);
 

@@ -91,6 +91,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         Token jwtToken = jwtTokenProvider.generateTokenHS512(
             userEmail,
             cProperties.getJwt().getAccessTimeoutMin(),
+            cProperties.getJwt().getRefreshTimeoutMin(),
             cProperties.getJwt().getSecret(),
             claims);
 
@@ -104,7 +105,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             response,
             jwtToken.getRefreshToken(),
             cProperties.getJwt().getRefreshHeader(),
-            cProperties.getJwt().getAccessTimeoutMin());
+            cProperties.getJwt().getRefreshTimeoutMin());
 
         accessToken = jwtToken.getAccessToken();
       }
