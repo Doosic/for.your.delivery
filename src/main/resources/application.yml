@@ -48,6 +48,11 @@ spring:
   thymeleaf:
     prefix: classpath:/templates/
     suffix: .html
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:bulk}
+    password: ${RABBITMQ_PASSWORD:bulk1234}
 
 logging:
   level:

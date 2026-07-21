@@ -45,7 +45,7 @@ public class ProductService {
   );
 
   private final CProperties properties;
-  private final ProductCatalogService productCatalogService;
+  private final ProductCatalogMessagePublisher productCatalogMessagePublisher;
   private final WikiEntryRepository wikiEntryRepository;
   private final Map<String, ProductItem> productCache = new ConcurrentHashMap<>();
 
@@ -55,8 +55,8 @@ public class ProductService {
 
     List<ProductItem> naverItems = searchNaver(keyword, size);
     List<ProductItem> elevenItems = searchElevenst(keyword, size);
-    collectSafely(naverItems);
-    registerSafely(elevenItems);
+    collectSafely(keyword, naverItems);
+    registerSafely(keyword, elevenItems);
     List<String> sources = new ArrayList<>();
     if (!naverItems.isEmpty()) sources.add("NAVER");
     if (!elevenItems.isEmpty()) sources.add("ELEVENST");
@@ -125,8 +125,9 @@ public class ProductService {
         continue;
       }
       live = true;
-      List<ProductFeedItem> feedItems = productCatalogService.collectAndEnrich(naverItems);
-      for (ProductFeedItem item : feedItems) {
+      collectSafely(keyword, naverItems);
+      for (int index = 0; index < naverItems.size(); index++) {
+        ProductFeedItem item = toInitialFeedItem(naverItems.get(index), index + 1);
         merged.putIfAbsent(item.productSq(), item);
       }
     }
@@ -161,7 +162,7 @@ public class ProductService {
 
   public void collectDefaultPriceHistory() {
     for (String keyword : KEYWORDS) {
-      collectSafely(searchNaver(keyword, 10));
+      collectSafely(keyword, searchNaver(keyword, 10));
     }
   }
 
@@ -316,26 +317,26 @@ public class ProductService {
     );
   }
 
-  private void collectSafely(List<ProductItem> items) {
+  private void collectSafely(String keyword, List<ProductItem> items) {
     if (items == null || items.isEmpty()) {
       return;
     }
-    try {
-      productCatalogService.collectAndEnrich(items);
-    } catch (Exception error) {
-      log.warn("Product price persistence failed: {}", error.getMessage());
-    }
+    productCatalogMessagePublisher.publish(
+        ProductCatalogCollectionType.COLLECT_AND_ENRICH,
+        keyword,
+        items
+    );
   }
 
-  private void registerSafely(List<ProductItem> items) {
+  private void registerSafely(String keyword, List<ProductItem> items) {
     if (items == null || items.isEmpty()) {
       return;
     }
-    try {
-      productCatalogService.registerOffers(items);
-    } catch (Exception error) {
-      log.warn("Product offer persistence failed: {}", error.getMessage());
-    }
+    productCatalogMessagePublisher.publish(
+        ProductCatalogCollectionType.REGISTER_OFFERS,
+        keyword,
+        items
+    );
   }
 
   private List<ProductFeedItem> selectBestPriceDeals(List<ProductFeedItem> items) {
