@@ -1,5 +1,5 @@
 server:
-  port: 8920
+  port: 30100
   title: delivery
   version: '@project.version@'
   servlet:
