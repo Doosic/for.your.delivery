@@ -1,6 +1,7 @@
 import { LockKeyhole, Mail, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import BrandLogo from '@/components/BrandLogo.jsx'
 import authService from '@/services/authService.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
 
@@ -39,7 +40,7 @@ function SignupPage() {
   return (
     <section className="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-7 shadow-sm sm:p-10">
       <div className="mb-8">
-        <p className="text-sm font-medium text-cyan-700">Foryour</p>
+        <BrandLogo compact />
         <h1 className="mt-2 text-2xl font-semibold text-slate-950">회원가입</h1>
       </div>
 

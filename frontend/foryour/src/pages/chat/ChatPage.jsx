@@ -1,47 +1,29 @@
 import { ChevronLeft, SendHorizontal } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ApiNameChip from '@/components/ApiNameChip.jsx'
+import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
+import { agentService } from '@/services/agentService.js'
 
 const BADGE_CLASS = {
   BUY_NOW: 'bg-emerald-50 text-emerald-600',
   WAIT: 'bg-amber-50 text-amber-600',
 }
 
-// 화면 데모용 대화 — 백엔드 연동 시 SSE 스트리밍(chatService)으로 교체
-const INITIAL_MESSAGES = [
-  { id: 1, role: 'user', text: '다음 주 캠핑 가는데 뭘 준비해야 해?' },
-  {
-    id: 2,
-    role: 'assistant',
-    text: '7/25 캠핑 일정을 확인했어요. 재고와 이전 기록 기준으로 6가지가 필요하고, 그중 2개는 오늘이 가장 저렴해요.',
-    card: {
-      title: '캠핑 준비물 추천',
-      items: [
-        { name: '부탄가스 4개입', decision: 'BUY_NOW', label: 'BUY NOW' },
-        { name: '아이스팩 대형', decision: 'BUY_NOW', label: 'BUY NOW' },
-        { name: '화로용 숯 3kg', decision: 'WAIT', label: 'WAIT · 7/23' },
-      ],
-    },
-  },
-  { id: 3, role: 'user', text: '부탄가스 장바구니에 담아줘' },
-  { id: 4, role: 'assistant', text: '담았어요. 결제 전 최저가 판매처(쿠팡, 무료배송) 링크로 연결해 드릴게요.' },
-]
-
 function ChatPage() {
   const navigate = useNavigate()
-  const [messages, setMessages] = useState(INITIAL_MESSAGES)
+  const [messages, setMessages] = useState(agentService.getInitialMessages())
   const [input, setInput] = useState('')
 
-  const handleSend = (event) => {
+  const handleSend = async (event) => {
     event.preventDefault()
     const text = input.trim()
     if (!text) return
-    setMessages((previous) => [
-      ...previous,
-      { id: Date.now(), role: 'user', text },
-      { id: Date.now() + 1, role: 'assistant', text: '요청을 확인했어요. 후보를 찾아 타이밍을 판단해 드릴게요. (데모 응답)' },
-    ])
+    const userMessage = { id: Date.now(), role: 'user', text }
+    setMessages((previous) => [...previous, userMessage])
     setInput('')
+    const assistantMessage = await agentService.sendMessage(text)
+    setMessages((previous) => [...previous, { id: Date.now() + 1, ...assistantMessage }])
   }
 
   return (
@@ -51,6 +33,7 @@ function ChatPage() {
           <ChevronLeft size={20} />
         </button>
         <h1 className="text-xl font-semibold">AI 어시스턴트</h1>
+        <ApiNameChip>{API_ENDPOINTS.chatStream}</ApiNameChip>
       </header>
 
       {/* 메시지 영역 */}

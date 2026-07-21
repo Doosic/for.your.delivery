@@ -1,5 +1,6 @@
 import { Bot, CalendarDays, Home, Import, LogOut, Search, Sparkles } from 'lucide-react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import BrandLogo from '@/components/BrandLogo.jsx'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
 
 const NAV_ITEMS = [
@@ -29,8 +30,8 @@ function MainLayout() {
       {/* 상단 헤더 (모바일에서는 로고+로그인만) */}
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link to="/" className="text-xl font-bold tracking-tight text-cyan-700">
-            PreBuy
+          <Link to="/" aria-label="FUB 홈">
+            <BrandLogo />
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">

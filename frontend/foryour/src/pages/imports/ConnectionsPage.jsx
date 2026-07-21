@@ -1,6 +1,10 @@
 import { CalendarDays, ChevronLeft, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import ApiNameChip from '@/components/ApiNameChip.jsx'
+import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
+import { importService } from '@/services/importService.js'
+import { importMock } from '@/services/mockData.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
 
 const SOURCE_ICON_BG = {
@@ -11,21 +15,22 @@ const SOURCE_ICON_BG = {
   FILE: 'bg-cyan-100',
 }
 
-// 화면 데모용 정적 데이터 — 백엔드 연동 시 importService.getConnections()로 교체
-const INITIAL_CONNECTIONS = [
-  { importConnectionSq: 1, source: 'NAVER', label: '네이버', description: '연결됨 · 마지막 동기화 오늘 07:40', connected: true, autoSync: '매일 06:00' },
-  { importConnectionSq: 2, source: 'COUPANG', label: '쿠팡', description: '연결됨 · 마지막 동기화 오늘 07:40', connected: true, autoSync: '매일 06:00' },
-  { importConnectionSq: 3, source: 'GMAIL', label: 'Gmail', description: '주문확인 메일에서 자동 수집', connected: false, action: 'Google 계정 연결' },
-  { importConnectionSq: 4, source: 'GOOGLE_CALENDAR', label: 'Google Calendar', description: '일정에서 준비물과 구매 마감일 추출', connected: false, action: '캘린더 연결' },
-  { importConnectionSq: 5, source: 'FILE', label: '파일 업로드', description: '주문내역 CSV/엑셀 직접 업로드', connected: false, action: '파일 선택' },
-]
-
 function ConnectionsPage() {
   const alert = useAlert()
-  const [connections, setConnections] = useState(INITIAL_CONNECTIONS)
+  const [connections, setConnections] = useState(importMock.connections)
+  const [isLive, setIsLive] = useState(false)
 
-  // 데모: 연결/해제 토글 — 백엔드 연동 시 importService.connect()/disconnect()로 교체
-  const toggleConnection = (target) => {
+  useEffect(() => {
+    importService.getConnections().then((response) => {
+      setConnections(response.connections)
+      setIsLive(Boolean(response.live))
+    })
+  }, [])
+
+  const toggleConnection = async (target) => {
+    if (!target.connected) {
+      await importService.connect(target.source)
+    }
     setConnections((previous) =>
       previous.map((connection) =>
         connection.importConnectionSq === target.importConnectionSq
@@ -39,7 +44,7 @@ function ConnectionsPage() {
       ),
     )
     if (!target.connected) {
-      alert.alertSuccess('알림', `${target.label} 연결이 완료되었습니다. (데모)`)
+      alert.alertSuccess('알림', `${target.label} 연결이 완료되었습니다.`)
     }
   }
 
@@ -49,7 +54,16 @@ function ConnectionsPage() {
         <Link to="/imports" className="text-slate-500 transition hover:text-slate-900" aria-label="뒤로">
           <ChevronLeft size={20} aria-hidden="true" />
         </Link>
-        <h1 className="text-xl font-semibold">소스 연결 관리</h1>
+        <div>
+          <h1 className="text-xl font-semibold">소스 연결 관리</h1>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <ApiNameChip>{API_ENDPOINTS.importConnections}</ApiNameChip>
+            <ApiNameChip>{API_ENDPOINTS.importOAuthStart}</ApiNameChip>
+            <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${isLive ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+              {isLive ? '실제 데이터' : '목업 데이터'}
+            </span>
+          </div>
+        </div>
       </header>
 
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

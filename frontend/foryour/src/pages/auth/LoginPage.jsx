@@ -1,6 +1,7 @@
 import { LockKeyhole, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import BrandLogo from '@/components/BrandLogo.jsx'
 import authService from '@/services/authService.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
 
@@ -31,15 +32,15 @@ function LoginPage() {
     <section className="grid w-full max-w-5xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:grid-cols-[1fr_1.05fr]">
       <div className="hidden bg-slate-950 p-10 text-white md:flex md:flex-col md:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">For Your Delivery</p>
-          <h1 className="mt-5 text-4xl font-semibold leading-tight">For Your Delivery.</h1>
+          <BrandLogo inverse />
+          <h1 className="mt-8 text-4xl font-semibold leading-tight">필요해지기 전에,<br />먼저 준비하는 쇼핑.</h1>
         </div>
-        <p className="text-sm leading-6 text-slate-300">계정 정보 확인 후 서비스 화면으로 이동합니다.</p>
+        <p className="text-sm leading-6 text-slate-300">구매 이력과 일정을 연결해 다음 구매 시점을 준비합니다.</p>
       </div>
 
       <div className="p-7 sm:p-10">
         <div className="mb-8">
-          <p className="text-sm font-medium text-cyan-700">Foryour</p>
+          <BrandLogo compact />
           <h2 className="mt-2 text-2xl font-semibold text-slate-950">로그인</h2>
         </div>
 

@@ -1,0 +1,18 @@
+export const API_ENDPOINTS = {
+  authCryptoKey: 'POST /wp/user/crypto-public-key',
+  authLogin: 'POST /wp/user/login',
+  authSignup: 'POST /wp/user/signup',
+  authLogout: 'GET /wb/user/logout',
+  productSearch: 'GET /wp/products',
+  productDetail: 'GET /wp/products/{productSq}',
+  briefingToday: 'GET /wp/briefings/today',
+  agentStatus: 'GET /wp/agent/status',
+  chatStream: 'POST /wp/agent/chat/stream',
+  importConnections: 'GET /wp/import-connections',
+  importOAuthStart: 'POST /wp/import-connections/oauth/start',
+  importsSync: 'POST /wp/imports/sync',
+  importsItems: 'GET /wp/imports/items',
+  importsCommit: 'POST /wp/imports/items/commit',
+  calendarSync: 'POST /wp/calendar/sync',
+  calendarSuggestions: 'GET /wp/calendar/purchase-suggestions',
+}

@@ -1,25 +1,27 @@
 import { CalendarDays, Flame, Import, Sparkles, TrendingDown } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
+import ApiNameChip from '@/components/ApiNameChip.jsx'
+import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
+import { homeService } from '@/services/homeService.js'
+import { productService } from '@/services/productService.js'
+import { productMocks } from '@/services/mockData.js'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
-
-// 화면 데모용 정적 데이터 — 백엔드 연동 시 homeService.getHomeFeed()로 교체
-const HOT_PRODUCTS = [
-  { productSq: 1, name: '오리진 캣 6가지 생선 1.8kg', price: 38900, tag: '검색 1위' },
-  { productSq: 2, name: '스탠리 텀블러 887ml', price: 27500, tag: '급상승' },
-  { productSq: 3, name: '제로 콜라 190ml x30', price: 13900, tag: '1만개 구매' },
-  { productSq: 4, name: '로얄캐닌 인도어 2kg', price: 29800, tag: '인기' },
-]
-
-const BEST_PRICE_DEALS = [
-  { productSq: 5, name: '고양이 모래 벤토나이트 6L', price: 7900, note: '역대 최저 대비 -2%', tag: '역대가' },
-  { productSq: 6, name: '세탁세제 리필 2.6L', price: 12900, note: '최근 6개월 최저', tag: '역대가' },
-  { productSq: 7, name: '물티슈 캡형 10팩', price: 8100, note: '평균 대비 -18%', tag: '특가' },
-]
 
 function HomePage() {
   const navigate = useNavigate()
   const { user, isLoggedIn } = useAuth()
   const { openLogin } = useOutletContext()
+  const [homeFeed, setHomeFeed] = useState({
+    live: false,
+    warnings: [],
+    hotProducts: productMocks.slice(0, 4),
+    bestPriceDeals: productMocks.slice(0, 3),
+  })
+
+  useEffect(() => {
+    homeService.getFeed().then(setHomeFeed)
+  }, [])
 
   const formatPrice = (value) => `${value.toLocaleString()}원`
 
@@ -107,19 +109,24 @@ function HomePage() {
           <h2 className="flex items-center gap-1.5 text-base font-semibold">
             <Flame size={17} className="text-rose-500" aria-hidden="true" /> 지금 핫한 상품
           </h2>
-          <span className="text-xs text-slate-400">실시간 인기</span>
+          <ApiNameChip>{API_ENDPOINTS.productSearch}</ApiNameChip>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {HOT_PRODUCTS.map((product) => (
+          {homeFeed.hotProducts.map((product) => (
             <Link
               key={product.productSq}
               to={`/products/${product.productSq}`}
+              onClick={() => productService.setSelectedProduct(product)}
               className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:border-cyan-300 hover:shadow"
             >
-              <div className="aspect-[4/3] rounded-md bg-gradient-to-br from-slate-200 to-slate-50" />
+              {product.imageUrl ? (
+                <img src={product.imageUrl} alt="" className="aspect-[4/3] w-full rounded-md object-cover" />
+              ) : (
+                <div className="aspect-[4/3] rounded-md bg-gradient-to-br from-slate-200 to-slate-50" />
+              )}
               <p className="mt-2 line-clamp-2 text-sm font-medium leading-5">{product.name}</p>
               <p className="mt-1 text-base font-bold">{formatPrice(product.price)}</p>
-              <p className="mt-0.5 text-xs font-semibold text-rose-500">{product.tag}</p>
+              <p className="mt-0.5 text-xs font-semibold text-rose-500">{product.mallName}</p>
             </Link>
           ))}
         </div>
@@ -131,25 +138,29 @@ function HomePage() {
           <h2 className="flex items-center gap-1.5 text-base font-semibold">
             <TrendingDown size={17} className="text-emerald-600" aria-hidden="true" /> 역대가 도달
           </h2>
-          <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600">오늘만</span>
+          <ApiNameChip>{API_ENDPOINTS.productSearch}</ApiNameChip>
         </div>
         <ul className="divide-y divide-slate-100">
-          {BEST_PRICE_DEALS.map((deal) => (
+          {homeFeed.bestPriceDeals.map((deal) => (
             <li key={deal.productSq}>
-              <Link to={`/products/${deal.productSq}`} className="flex items-center gap-4 py-3 transition hover:bg-slate-50">
-                <div className="h-12 w-12 shrink-0 rounded-md bg-gradient-to-br from-slate-200 to-slate-50" />
+              <Link
+                to={`/products/${deal.productSq}`}
+                onClick={() => productService.setSelectedProduct(deal)}
+                className="flex items-center gap-4 py-3 transition hover:bg-slate-50"
+              >
+                {deal.imageUrl ? (
+                  <img src={deal.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-md object-cover" />
+                ) : (
+                  <div className="h-12 w-12 shrink-0 rounded-md bg-gradient-to-br from-slate-200 to-slate-50" />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{deal.name}</p>
                   <p className="text-xs text-slate-500">
-                    {deal.note} · {formatPrice(deal.price)}
+                    {deal.mallName} · {formatPrice(deal.price)}
                   </p>
                 </div>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    deal.tag === '역대가' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'
-                  }`}
-                >
-                  {deal.tag}
+                <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600">
+                  최저가순
                 </span>
               </Link>
             </li>

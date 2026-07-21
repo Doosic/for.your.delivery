@@ -1,96 +1,90 @@
-import { ChevronLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { ChevronLeft, ExternalLink } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import ApiNameChip from '@/components/ApiNameChip.jsx'
+import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
+import { productService } from '@/services/productService.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
 
-// 화면 데모용 정적 데이터 — 백엔드 연동 시 productService.getDetail(productSq)로 교체
-const PRODUCT = {
-  name: '오리진 캣 6가지 생선 1.8kg',
-  price: 38900,
-  allTimeLowDiff: '-2.5%',
-  priceHistory: [0.7, 0.64, 0.8, 0.58, 0.52, 0.44],
-  priceComparison: [
-    { seller: '쿠팡', note: '38,900원 · 무료배송' },
-    { seller: '네이버쇼핑', note: '39,400원 · +3,000원' },
-  ],
-  aiScore: {
-    score: 87,
-    reasons: [
-      { label: '영양 균형', detail: '우수 — 조단백 40%', good: true },
-      { label: '성분 안전성', detail: '인공보존료 없음', good: true },
-      { label: '가격 적정성', detail: '역대가 근접', good: false },
-    ],
-  },
-  nutrition: [
-    ['조단백', '40% 이상'],
-    ['조지방', '20% 이상'],
-    ['조섬유', '3% 이하'],
-    ['수분', '10% 이하'],
-    ['칼슘 / 인', '1.4% / 1.1%'],
-  ],
-  ingredients: ['신선 연어', '청어', '가자미', '달걀', '그레인프리'],
-}
-
 function ProductDetailPage() {
   const navigate = useNavigate()
+  const { productSq } = useParams()
   const alert = useAlert()
   const { isLoggedIn } = useAuth()
-  const product = PRODUCT
-  const score = product.aiScore.score
+  const [product, setProduct] = useState(() => productService.getSelectedProduct(productSq))
+  const score = isLoggedIn ? 87 : 76
+
+  useEffect(() => {
+    productService.detail(productSq).then(setProduct)
+  }, [productSq])
+
+  if (!product) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
+        상품 정보를 불러오는 중입니다.
+      </div>
+    )
+  }
 
   const handleBuy = () => {
-    alert.alertSuccess('알림', '최저가 판매처(쿠팡)로 이동합니다. (데모)')
+    if (product.productUrl) {
+      window.open(product.productUrl, '_blank', 'noopener,noreferrer')
+      return
+    }
+    alert.alertWarning('알림', '판매처 링크가 아직 없어요.')
   }
+
+  const reasons = [
+    { label: '가격 정보', detail: product.price > 0 ? '판매가 확인됨' : '가격 확인 필요', good: product.price > 0 },
+    { label: '판매처', detail: product.mallName || product.source, good: true },
+    { label: '데이터', detail: product.providerCode === 'LOCAL_FALLBACK' ? '목업 fallback' : '외부 API', good: product.providerCode !== 'LOCAL_FALLBACK' },
+  ]
 
   return (
     <div className="space-y-5">
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-slate-900"
-      >
-        <ChevronLeft size={16} aria-hidden="true" /> 뒤로
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-slate-900"
+        >
+          <ChevronLeft size={16} aria-hidden="true" /> 뒤로
+        </button>
+        <ApiNameChip>{API_ENDPOINTS.productDetail}</ApiNameChip>
+      </div>
 
-      {/* 데스크톱 2열: 좌 이미지+가격 / 우 AI·영양 */}
       <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
         <div className="space-y-5">
           <div className="flex items-center justify-center rounded-lg border border-slate-200 bg-white p-10 shadow-sm">
-            <div className="aspect-[4/3] w-full max-w-sm rounded-lg bg-gradient-to-br from-slate-200 to-slate-50" />
+            {product.imageUrl ? (
+              <img src={product.imageUrl} alt="" className="aspect-[4/3] w-full max-w-sm rounded-lg object-contain" />
+            ) : (
+              <div className="aspect-[4/3] w-full max-w-sm rounded-lg bg-gradient-to-br from-slate-200 to-slate-50" />
+            )}
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <h1 className="text-lg font-semibold leading-snug">{product.name}</h1>
               <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600">
-                최저가
+                {product.source}
               </span>
             </div>
             <p className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl font-bold">{product.price.toLocaleString()}원</span>
-              <span className="text-xs font-semibold text-rose-500">
-                역대 최저 대비 {product.allTimeLowDiff}
-              </span>
+              <span className="text-xs font-semibold text-slate-500">{product.mallName}</span>
             </p>
 
-            <p className="mt-4 text-xs text-slate-400">최근 6개월 가격 추이</p>
-            <div className="mt-2 flex h-16 items-end gap-1.5">
-              {product.priceHistory.map((height, index) => (
-                <div
-                  key={index}
-                  style={{ height: `${height * 100}%` }}
-                  className={`flex-1 rounded-t ${
-                    index === product.priceHistory.length - 1 ? 'bg-cyan-700' : 'bg-cyan-100'
-                  }`}
-                />
-              ))}
-            </div>
-
             <ul className="mt-4 space-y-2">
-              {product.priceComparison.map((quote) => (
-                <li key={quote.seller} className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500">{quote.seller}</span>
-                  <span className="font-semibold">{quote.note}</span>
+              {[
+                ['데이터 출처', product.providerCode],
+                ['판매처', product.mallName],
+                ['상품번호', product.productSq],
+              ].map(([label, value]) => (
+                <li key={label} className="flex items-center justify-between gap-4 text-sm">
+                  <span className="text-slate-500">{label}</span>
+                  <span className="truncate font-semibold">{value}</span>
                 </li>
               ))}
             </ul>
@@ -98,7 +92,6 @@ function ProductDetailPage() {
         </div>
 
         <div className="space-y-5">
-          {/* AI 추천도 — 영양정보 있는 상품만 노출 */}
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold">AI 추천도</h2>
@@ -117,7 +110,7 @@ function ProductDetailPage() {
                 </div>
               </div>
               <ul className="min-w-0 flex-1 space-y-1.5">
-                {product.aiScore.reasons.map((reason) => (
+                {reasons.map((reason) => (
                   <li key={reason.label} className="flex items-center justify-between gap-2 text-sm">
                     <span className="text-slate-500">{reason.label}</span>
                     <span className={`text-right font-semibold ${reason.good ? 'text-emerald-600' : 'text-slate-900'}`}>
@@ -130,46 +123,11 @@ function ProductDetailPage() {
 
             <p className="mt-4 text-sm leading-6 text-slate-500">
               {isLoggedIn
-                ? '반려묘 정보와 구매 이력을 반영한 맞춤 추천도예요.'
-                : '영양성분표와 원료 구성을 분석한 일반 추천도예요. 로그인하면 반려묘 정보와 구매 이력을 반영한 맞춤 추천도로 바뀌어요.'}
+                ? '구매 이력과 일정 데이터를 함께 반영해 구매 타이밍을 판단합니다.'
+                : '로그인하면 구매 이력과 일정 데이터를 반영한 맞춤 추천도로 바뀌어요.'}
             </p>
           </div>
 
-          {/* 영양정보 */}
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold">
-              영양정보 <span className="text-xs font-normal text-slate-400">100g당</span>
-            </h2>
-            <ul className="mt-3 divide-y divide-slate-100">
-              {product.nutrition.map(([label, value]) => (
-                <li key={label} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-slate-500">{label}</span>
-                  <span className="font-semibold">{value}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* 주요 성분 */}
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold">주요 성분</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {product.ingredients.map((ingredient) => (
-                <span
-                  key={ingredient}
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                    ingredient === '그레인프리'
-                      ? 'border-emerald-300 text-emerald-600'
-                      : 'border-slate-300 text-slate-600'
-                  }`}
-                >
-                  {ingredient}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* CTA */}
           <div className="flex gap-3">
             <button
               type="button"
@@ -181,9 +139,10 @@ function ProductDetailPage() {
             <button
               type="button"
               onClick={handleBuy}
-              className="h-12 flex-[1.4] rounded-md bg-cyan-700 text-sm font-semibold text-white transition hover:bg-cyan-800"
+              className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-md bg-cyan-700 text-sm font-semibold text-white transition hover:bg-cyan-800"
             >
-              최저가로 구매
+              <ExternalLink size={16} aria-hidden="true" />
+              판매처로 이동
             </button>
           </div>
         </div>

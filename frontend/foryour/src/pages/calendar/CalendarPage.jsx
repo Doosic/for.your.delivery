@@ -1,32 +1,13 @@
 import { CalendarDays, CheckCircle2, Link as LinkIcon, RefreshCw } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import ApiNameChip from '@/components/ApiNameChip.jsx'
+import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
+import { calendarService } from '@/services/calendarService.js'
+import { importService } from '@/services/importService.js'
+import { calendarMock } from '@/services/mockData.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
-
-const UPCOMING_EVENTS = [
-  {
-    eventSq: 1,
-    title: '주말 캠핑',
-    startsAt: '2026-07-25 09:00',
-    location: '가평',
-    suggestion: '모기퇴치제, 아이스박스, 숯은 7/23까지 구매 권장',
-  },
-  {
-    eventSq: 2,
-    title: '반려묘 병원 방문',
-    startsAt: '2026-07-28 15:30',
-    location: '동네 동물병원',
-    suggestion: '이동장 패드와 간식 재고 확인',
-  },
-  {
-    eventSq: 3,
-    title: '친구 생일',
-    startsAt: '2026-08-02 19:00',
-    location: '성수',
-    suggestion: '선물 후보를 7/30 브리핑에 노출',
-  },
-]
 
 function CalendarPage() {
   const alert = useAlert()
@@ -34,22 +15,34 @@ function CalendarPage() {
   const { openLogin } = useOutletContext()
   const [connected, setConnected] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [suggestions, setSuggestions] = useState(calendarMock.suggestions)
+  const [isLive, setIsLive] = useState(false)
+
+  useEffect(() => {
+    calendarService.getSuggestions().then((response) => {
+      setSuggestions(response.suggestions)
+      setIsLive(Boolean(response.live))
+    })
+  }, [])
 
   const handleConnect = async () => {
     if (!isLoggedIn) {
       openLogin()
       return
     }
+    await importService.connect('GOOGLE_CALENDAR')
     setConnected(true)
-    await alert.alertSuccess('알림', 'Google Calendar 연결이 완료되었습니다. (데모)')
+    await alert.alertSuccess('알림', 'Google Calendar 연결이 완료되었습니다.')
   }
 
   const handleSync = async () => {
     setIsSyncing(true)
-    setTimeout(async () => {
-      setIsSyncing(false)
-      await alert.alertSuccess('알림', '다가오는 일정 3건을 분석했습니다. (데모)')
-    }, 900)
+    const response = await calendarService.sync()
+    const nextSuggestions = await calendarService.getSuggestions()
+    setSuggestions(nextSuggestions.suggestions)
+    setIsLive(Boolean(nextSuggestions.live))
+    setIsSyncing(false)
+    await alert.alertSuccess('알림', `다가오는 일정 ${response.eventCount ?? suggestions.length}건을 분석했습니다.`)
   }
 
   return (
@@ -63,6 +56,13 @@ function CalendarPage() {
           <p className="mt-1 text-sm leading-6 text-slate-500">
             일정에서 필요한 물품을 먼저 찾고, 배송 기간을 고려해 구매 마감일을 제안해요.
           </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <ApiNameChip>{API_ENDPOINTS.calendarSync}</ApiNameChip>
+            <ApiNameChip>{API_ENDPOINTS.calendarSuggestions}</ApiNameChip>
+            <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${isLive ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+              {isLive ? '실제 데이터' : '목업 데이터'}
+            </span>
+          </div>
         </div>
         <button
           type="button"
@@ -99,7 +99,7 @@ function CalendarPage() {
           <h2 className="text-base font-semibold">다가오는 일정 분석</h2>
         </div>
         <ul className="divide-y divide-slate-100">
-          {UPCOMING_EVENTS.map((event) => (
+          {suggestions.map((event) => (
             <li key={event.eventSq} className="p-4">
               <div className="flex items-start gap-3">
                 <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />

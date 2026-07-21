@@ -1,12 +1,12 @@
 import { LockKeyhole, Mail, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import BrandLogo from '@/components/BrandLogo.jsx'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
 
 /**
  * 로그인 모달 — 헤더의 '로그인' 버튼을 눌렀을 때만 뜬다 (로그인 강제 없음).
- * 지금은 화면 데모용으로 즉시 로그인 처리하며,
- * 실제 연동 시 authService().login(email, password) 호출로 교체한다.
+ * 실제 연동 시 POST /wp/user/login 응답으로 세션 상태를 갱신한다.
  */
 function LoginModal({ onClose }) {
   const { saveUser } = useAuth()
@@ -15,7 +15,7 @@ function LoginModal({ onClose }) {
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    // TODO: await authService().login(email, password) → saveUser(result.body)
+    // TODO: POST /wp/user/login 응답의 user payload로 교체
     saveUser({ name: email ? email.split('@')[0] : '승열', email })
     onClose()
   }
@@ -33,7 +33,7 @@ function LoginModal({ onClose }) {
       >
         <div className="mb-6 flex items-start justify-between">
           <div>
-            <p className="text-sm font-medium text-cyan-700">PreBuy</p>
+            <BrandLogo compact />
             <h2 className="mt-1 text-2xl font-semibold text-slate-950">로그인</h2>
             <p className="mt-1 text-xs text-slate-500">로그인하면 AI 브리핑이 내 데이터 기준으로 바뀌어요</p>
           </div>

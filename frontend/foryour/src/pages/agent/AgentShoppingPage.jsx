@@ -1,5 +1,10 @@
 import { Bot, MessageCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ApiNameChip from '@/components/ApiNameChip.jsx'
+import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
+import { agentService } from '@/services/agentService.js'
+import { agentMock } from '@/services/mockData.js'
 
 const BADGE_CLASS = {
   BUY_NOW: 'bg-emerald-50 text-emerald-600',
@@ -7,21 +12,13 @@ const BADGE_CLASS = {
   HOLD: 'bg-slate-100 text-slate-400',
 }
 
-// 화면 데모용 정적 데이터 — 백엔드 연동 시 briefingService.getAgentStatus()로 교체
-const MONITORING = [
-  { label: '재구매 모니터링', value: '5개 품목 추적 중' },
-  { label: '가격 추적', value: '2건 · 하락 시 알림' },
-  { label: '일정 준비', value: '캠핑 7/25 · 주문 마감 7/23' },
-]
-
-const DECISIONS = [
-  { name: '세탁세제 리필 2.6L', note: '재고 D-3 · 12,900원', decision: 'BUY_NOW', label: 'BUY NOW' },
-  { name: '고양이 사료 1.5kg', note: '7/28 최저가 예상', decision: 'WAIT', label: 'WAIT' },
-  { name: '물티슈 캡형 10팩', note: '재고 충분 · 보류', decision: 'HOLD', label: 'HOLD' },
-]
-
 function AgentShoppingPage() {
   const navigate = useNavigate()
+  const [agentStatus, setAgentStatus] = useState({ ...agentMock, live: false })
+
+  useEffect(() => {
+    agentService.getStatus().then(setAgentStatus)
+  }, [])
 
   return (
     <div className="space-y-5">
@@ -29,9 +26,15 @@ function AgentShoppingPage() {
         <p className="flex items-center gap-1.5 text-sm font-semibold text-cyan-300">
           <Bot size={15} aria-hidden="true" /> Agent 쇼핑
         </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <ApiNameChip>{API_ENDPOINTS.agentStatus}</ApiNameChip>
+          <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${agentStatus.live ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+            {agentStatus.live ? '실제 데이터' : '목업 데이터'}
+          </span>
+        </div>
         <h1 className="mt-2 text-xl font-semibold">Agent가 대신 쇼핑하고 있어요</h1>
         <dl className="mt-4 grid gap-2 sm:grid-cols-3">
-          {MONITORING.map((item) => (
+          {agentStatus.monitoring.map((item) => (
             <div key={item.label} className="rounded-md bg-white/10 p-3">
               <dt className="text-xs text-cyan-300">{item.label}</dt>
               <dd className="mt-0.5 text-sm font-semibold">{item.value}</dd>
@@ -44,7 +47,7 @@ function AgentShoppingPage() {
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-base font-semibold">오늘의 판단</h2>
           <ul className="mt-3 divide-y divide-slate-100">
-            {DECISIONS.map((item) => (
+            {agentStatus.decisions.map((item) => (
               <li key={item.name} className="flex items-center gap-4 py-3">
                 <div className="h-12 w-12 shrink-0 rounded-md bg-gradient-to-br from-slate-200 to-slate-50" />
                 <div className="min-w-0 flex-1">

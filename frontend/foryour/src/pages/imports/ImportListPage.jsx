@@ -1,6 +1,10 @@
 import { CalendarDays, LogIn, RefreshCw, Settings, ShoppingBag } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
+import ApiNameChip from '@/components/ApiNameChip.jsx'
+import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
+import { importService } from '@/services/importService.js'
+import { importMock } from '@/services/mockData.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
 
@@ -12,22 +16,21 @@ const SOURCE_BADGE = {
 
 const SOURCE_LABEL = { COUPANG: '쿠팡', NAVER: '네이버', GMAIL: 'Gmail' }
 
-// 화면 데모용 정적 데이터 — 백엔드 연동 시 importService.getItems()로 교체
-const INITIAL_ITEMS = [
-  { importedItemSq: 1, name: '고양이 사료 오리진 1.5kg', quantity: 1, price: 32400, purchasedAt: '2026-07-21', source: 'COUPANG', isNew: true },
-  { importedItemSq: 2, name: '세탁세제 리필 2.6L', quantity: 1, price: 12900, purchasedAt: '2026-07-20', source: 'NAVER', isNew: true },
-  { importedItemSq: 3, name: '우유 900ml x2', quantity: 2, price: 5600, purchasedAt: '2026-07-19', source: 'NAVER', isNew: true },
-  { importedItemSq: 4, name: '물티슈 캡형 10팩', quantity: 1, price: 9900, purchasedAt: '2026-07-18', source: 'COUPANG', isNew: false },
-  { importedItemSq: 5, name: '키친타올 4롤', quantity: 1, price: 6400, purchasedAt: '2026-07-15', source: 'GMAIL', isNew: false },
-]
-
 function ImportListPage() {
   const alert = useAlert()
   const { isLoggedIn } = useAuth()
   const { openLogin } = useOutletContext()
-  const [items, setItems] = useState(INITIAL_ITEMS)
+  const [items, setItems] = useState(importMock.items)
   const [checked, setChecked] = useState(() => new Set([1, 2, 3]))
   const [isSyncing, setIsSyncing] = useState(false)
+  const [isLive, setIsLive] = useState(false)
+
+  useEffect(() => {
+    importService.getItems().then((response) => {
+      setItems(response.items)
+      setIsLive(Boolean(response.live))
+    })
+  }, [])
 
   const toggle = (itemSq) => {
     setChecked((previous) => {
@@ -38,27 +41,37 @@ function ImportListPage() {
     })
   }
 
-  // 데모: 동기화 버튼 — 백엔드 연동 시 importService.sync() 호출로 교체
-  const handleSync = () => {
+  const handleSync = async () => {
     setIsSyncing(true)
-    setTimeout(() => {
-      setIsSyncing(false)
-      alert.alertSuccess('알림', '새 구매내역 0건 · 이미 최신 상태예요. (데모)')
-    }, 900)
+    const response = await importService.sync()
+    const nextItems = await importService.getItems()
+    setItems(nextItems.items)
+    setIsLive(Boolean(nextItems.live))
+    setIsSyncing(false)
+    alert.alertSuccess('알림', `구매목록 ${response.newCount ?? 0}건을 확인했습니다.`)
   }
 
-  // 데모: 선택 항목 반영 — 목록에서 제거하고 알림
   const handleCommit = async () => {
-    const count = checked.size
+    const selectedIds = [...checked]
+    const response = await importService.commit(selectedIds)
     setItems((previous) => previous.filter((item) => !checked.has(item.importedItemSq)))
     setChecked(new Set())
-    await alert.alertSuccess('알림', `${count}건이 재고에 반영되었습니다. (데모)`)
+    await alert.alertSuccess('알림', `${response.committedCount ?? selectedIds.length}건이 재고에 반영되었습니다.`)
   }
 
   return (
     <div className="space-y-5">
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">구매목록 가져오기</h1>
+        <div>
+          <h1 className="text-xl font-semibold">구매목록 가져오기</h1>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <ApiNameChip>{API_ENDPOINTS.importsItems}</ApiNameChip>
+            <ApiNameChip>{API_ENDPOINTS.importsSync}</ApiNameChip>
+            <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${isLive ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+              {isLive ? '실제 데이터' : '목업 데이터'}
+            </span>
+          </div>
+        </div>
         <Link
           to="/imports/connections"
           className="flex h-9 items-center gap-1.5 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
@@ -92,9 +105,9 @@ function ImportListPage() {
             <ShoppingBag size={16} className="text-cyan-700" aria-hidden="true" /> 구매 데이터
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            <span className="font-semibold text-emerald-600">네이버 연결됨</span> ·{' '}
-            <span className="font-semibold text-emerald-600">쿠팡 연결됨</span> ·{' '}
-            <span className="text-slate-400">Gmail 대기</span>
+            <span className="font-semibold text-emerald-600">source=NAVER</span> ·{' '}
+            <span className="font-semibold text-emerald-600">source=COUPANG</span> ·{' '}
+            <span className="text-slate-400">source=GMAIL</span>
           </p>
           <button
             type="button"
