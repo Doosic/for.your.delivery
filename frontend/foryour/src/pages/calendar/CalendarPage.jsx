@@ -21,6 +21,7 @@ function CalendarPage() {
   useEffect(() => {
     calendarService.getSuggestions().then((response) => {
       setSuggestions(response.suggestions)
+      setConnected(Boolean(response.connected))
       setIsLive(Boolean(response.live))
     })
   }, [])
@@ -30,7 +31,8 @@ function CalendarPage() {
       openLogin()
       return
     }
-    await importService.connect('GOOGLE_CALENDAR')
+    const result = await importService.connect('GOOGLE_CALENDAR')
+    if (result.redirecting) return
     setConnected(true)
     await alert.alertSuccess('알림', 'Google Calendar 연결이 완료되었습니다.')
   }

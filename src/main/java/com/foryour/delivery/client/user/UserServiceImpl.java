@@ -16,6 +16,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 import static com.foryour.delivery.domain.enums.ErrorCode.DATA_NOT_EXIST;
 import static com.foryour.delivery.domain.enums.ErrorCode.DUPLICATED_DATA;
 import static com.foryour.delivery.domain.enums.ErrorCode.LOCKED_ACCOUNT;
@@ -52,6 +54,25 @@ public class UserServiceImpl implements UserService {
     user.setStatus(UserStatusCode.USE);
 
     return toResponse(userRepository.save(user));
+  }
+
+  @Override
+  @Transactional
+  public UserResponseVO findOrCreateGoogleUser(String email, String name) {
+    String normalizedEmail = email.trim().toLowerCase();
+    UserEntity user = userRepository.findByEmail(normalizedEmail).orElseGet(() -> {
+      UserEntity created = new UserEntity();
+      created.setEmail(normalizedEmail);
+      created.setName(name == null || name.isBlank() ? normalizedEmail : name.trim());
+      created.setPassword(bCryptPasswordEncoder.encode(UUID.randomUUID().toString()));
+      created.setStatus(UserStatusCode.USE);
+      return userRepository.save(created);
+    });
+
+    if (!UserStatusCode.USE.equals(user.getStatus())) {
+      throw new AccountException(LOCKED_ACCOUNT);
+    }
+    return toResponse(user);
   }
 
   @Override

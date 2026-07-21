@@ -19,7 +19,8 @@ function App() {
     <Routes>
       {/* 쇼핑몰 메인 — 로그인 강제 없음, 전 화면 게스트 접근 가능 */}
       <Route path="/" element={<MainLayout />}>
-        <Route path="/app/main" index element={<HomePage />} />
+        <Route index element={<Navigate to="/app/main" replace />} />
+        <Route path="/app/main" element={<HomePage />} />
         <Route path="/app/search" element={<SearchPage />} />
         <Route path="/app/products/:productSq" element={<ProductDetailPage />} />
         <Route path="/app/briefing" element={<BriefingPage />} />
@@ -32,11 +33,11 @@ function App() {
 
       {/* 기존 인증 플로우 유지 (회원가입은 전체 화면 페이지) */}
       <Route element={<AuthLayout />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/app/login" element={<LoginPage />} />
+        <Route path="/app/signup" element={<SignupPage />} />
       </Route>
       <Route path="/app/complete" element={<CompletePage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/app/main" replace />} />
     </Routes>
   )
 }

@@ -6,7 +6,7 @@ export const importService = {
     try {
       const response = await api.GET('/delivery/wp/imports/items', { status: 'NEW', page: 0, size: 20 })
       const body = response.body ?? response.data
-      return { items: body.items ?? [], live: true }
+      return { items: body.items ?? [], live: body.live ?? true }
     } catch {
       return { items: importMock.items, live: false }
     }
@@ -38,7 +38,7 @@ export const importService = {
     try {
       const response = await api.GET('/delivery/wp/import-connections')
       const body = response.body ?? response.data
-      return { connections: body.connections ?? [], live: true }
+      return { connections: body.connections ?? [], live: body.live ?? true }
     } catch {
       return { connections: importMock.connections, live: false }
     }
@@ -50,7 +50,12 @@ export const importService = {
         source,
         redirectUri: window.location.href,
       })
-      return response.body ?? response.data
+      const body = response.body ?? response.data
+      if (body.authorizationUrl) {
+        window.location.assign(body.authorizationUrl)
+        return { ...body, redirecting: true }
+      }
+      return body
     } catch {
       return { source, connected: true, live: false }
     }

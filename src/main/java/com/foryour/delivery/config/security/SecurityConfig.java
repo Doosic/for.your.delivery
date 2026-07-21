@@ -38,6 +38,7 @@ public class SecurityConfig {
   private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
   private final JwtRequestFilter jwtRequestFilter;
   private final BCryptPasswordEncoder bCryptPasswordEncoder;
+  private final GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler;
 
   private static final String[] WHITE_LIST = {
       "/**"
@@ -55,8 +56,9 @@ public class SecurityConfig {
         .exceptionHandling(exception -> exception
             .authenticationEntryPoint(jwtAuthenticationEntryPoint))
         .sessionManagement(session -> session
-            .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
         .formLogin(AbstractHttpConfigurer::disable)
+        .oauth2Login(oauth -> oauth.successHandler(googleOAuth2SuccessHandler))
         .addFilter(getAuthenticationFilter())
         .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 

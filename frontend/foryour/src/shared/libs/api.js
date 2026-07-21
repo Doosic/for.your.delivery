@@ -62,7 +62,7 @@ api.interceptors.response.use(
     if (error.status === 401 || error.response?.status === 401) {
       alert('로그인 세션이 종료되었습니다.')
       const cp = window.location.pathname.startsWith('/delivery') ? localStorage.getItem('delivery-contextpath') || '/delivery' : ''
-      location.href = `${cp}/login`
+      location.href = `${cp}/app/login`
       return Promise.reject(error)
     }
 

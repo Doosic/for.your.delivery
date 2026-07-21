@@ -51,7 +51,7 @@ function HomePage() {
                 세탁세제는 오늘이 적기, 사료는 7/28까지 기다리면 약 2,800원 아껴요.
               </p>
               <Link
-                to="/briefing"
+                to="/app/briefing"
                 className="mt-5 inline-flex h-10 items-center rounded-md bg-white px-4 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-50"
               >
                 브리핑 전체 보기
@@ -68,7 +68,7 @@ function HomePage() {
               <div className="mt-5 flex gap-2">
                 <button
                   type="button"
-                  onClick={() => navigate('/signup')}
+                  onClick={() => navigate('/app/signup')}
                   className="inline-flex h-10 items-center rounded-md bg-white px-4 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-50"
                 >
                   무료로 시작하기
@@ -115,7 +115,7 @@ function HomePage() {
           {homeFeed.hotProducts.map((product) => (
             <Link
               key={product.productSq}
-              to={`/products/${product.productSq}`}
+              to={`/app/products/${product.productSq}`}
               onClick={() => productService.setSelectedProduct(product)}
               className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:border-cyan-300 hover:shadow"
             >
@@ -144,7 +144,7 @@ function HomePage() {
           {homeFeed.bestPriceDeals.map((deal) => (
             <li key={deal.productSq}>
               <Link
-                to={`/products/${deal.productSq}`}
+                to={`/app/products/${deal.productSq}`}
                 onClick={() => productService.setSelectedProduct(deal)}
                 className="flex items-center gap-4 py-3 transition hover:bg-slate-50"
               >
@@ -170,7 +170,7 @@ function HomePage() {
 
       <section className="grid gap-3 md:grid-cols-2">
         <Link
-          to="/imports"
+          to="/app/imports"
           className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-cyan-300 hover:shadow"
         >
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-cyan-50 text-cyan-700">
@@ -184,7 +184,7 @@ function HomePage() {
           </span>
         </Link>
         <Link
-          to="/calendar"
+          to="/app/calendar"
           className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-cyan-300 hover:shadow"
         >
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-emerald-50 text-emerald-700">

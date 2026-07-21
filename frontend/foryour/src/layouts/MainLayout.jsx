@@ -2,14 +2,15 @@ import { Bot, CalendarDays, Home, Import, LogOut, Search, Sparkles } from 'lucid
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import BrandLogo from '@/components/BrandLogo.jsx'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
+import authService from '@/services/authService.js'
 
 const NAV_ITEMS = [
-  { to: '/', label: '홈', icon: Home },
-  { to: '/search', label: '검색', icon: Search },
-  { to: '/briefing', label: 'AI 브리핑', icon: Sparkles },
-  { to: '/agent', label: 'Agent 쇼핑', icon: Bot },
-  { to: '/imports', label: '구매목록', icon: Import },
-  { to: '/calendar', label: '캘린더', icon: CalendarDays },
+  { to: '/app/main', label: '홈', icon: Home },
+  { to: '/app/search', label: '검색', icon: Search },
+  { to: '/app/briefing', label: 'AI 브리핑', icon: Sparkles },
+  { to: '/app/agent', label: 'Agent 쇼핑', icon: Bot },
+  { to: '/app/imports', label: '구매목록', icon: Import },
+  { to: '/app/calendar', label: '캘린더', icon: CalendarDays },
 ]
 
 /**
@@ -30,13 +31,13 @@ function MainLayout() {
       {/* 상단 헤더 (모바일에서는 로고+로그인만) */}
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link to="/" aria-label="FUB 홈">
+          <Link to="/app/main" aria-label="FUB 홈">
             <BrandLogo />
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
             {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-              <NavLink key={to} to={to} end={to === '/'} className={navLinkClass}>
+              <NavLink key={to} to={to} end={to === '/app/main'} className={navLinkClass}>
                 <Icon size={16} aria-hidden="true" />
                 {label}
               </NavLink>
@@ -49,7 +50,14 @@ function MainLayout() {
                 <span className="text-sm font-medium text-slate-700">{user?.name}님</span>
                 <button
                   type="button"
-                  onClick={clearUser}
+                  onClick={async () => {
+                    try {
+                      await authService().logout()
+                    } finally {
+                      clearUser()
+                      navigate('/app/main')
+                    }
+                  }}
                   className="flex h-9 items-center gap-1.5 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
                 >
                   <LogOut size={14} aria-hidden="true" />
@@ -59,7 +67,7 @@ function MainLayout() {
             ) : (
               <button
                 type="button"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/app/login')}
                 className="flex h-9 items-center rounded-md bg-cyan-700 px-4 text-sm font-semibold text-white transition hover:bg-cyan-800"
               >
                 로그인
@@ -71,7 +79,7 @@ function MainLayout() {
 
       {/* 본문 — 모바일은 하단 탭 높이만큼 하단 패딩 */}
       <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-6 sm:px-6 md:pb-10">
-        <Outlet context={{ openLogin: () => navigate('/login') }} />
+        <Outlet context={{ openLogin: () => navigate('/app/login') }} />
       </main>
 
       {/* 모바일 하단 탭 */}
@@ -80,7 +88,7 @@ function MainLayout() {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/app/main'}
             className={({ isActive }) =>
               `flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition ${
                 isActive ? 'text-cyan-700' : 'text-slate-400'

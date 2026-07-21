@@ -84,4 +84,16 @@ public class UserController extends BaseController {
 
     return APIDataResponse.of(userResponse);
   }
+
+  @GetMapping("/wb/user/me")
+  public APIDataResponse<UserResponseVO> me() {
+    return APIDataResponse.of(getSessionInfo());
+  }
+
+  @GetMapping("/wb/user/logout")
+  public APIDataResponse<Void> logout(HttpServletResponse response) {
+    jwtTokenProvider.resetAccessCookie(response, cProperties.getJwt().getAccessHeader());
+    jwtTokenProvider.resetRefreshCookie(response, cProperties.getJwt().getRefreshHeader());
+    return APIDataResponse.of(null);
+  }
 }

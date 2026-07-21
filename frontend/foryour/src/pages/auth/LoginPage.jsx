@@ -4,10 +4,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import BrandLogo from '@/components/BrandLogo.jsx'
 import authService from '@/services/authService.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
+import { useAuth } from '@/shared/hooks/useAuth.jsx'
 
 function LoginPage() {
   const navigate = useNavigate()
   const alert = useAlert()
+  const { saveUser } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -17,7 +19,8 @@ function LoginPage() {
 
     try {
       setIsSubmitting(true)
-      await authService().login(email, password)
+      const user = await authService().login(email, password)
+      saveUser(user)
       await alert.alertSuccess('알림', '로그인되었습니다.')
       navigate('/app/main')
     } catch (error) {
@@ -84,9 +87,24 @@ function LoginPage() {
           </button>
         </form>
 
+        <div className="my-5 flex items-center gap-3 text-xs text-slate-400">
+          <span className="h-px flex-1 bg-slate-200" />
+          또는
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => authService().loginWithGoogle()}
+          className="flex h-12 w-full items-center justify-center gap-3 rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+        >
+          <span className="grid size-6 place-items-center rounded-full border border-slate-200 text-sm font-bold text-blue-600" aria-hidden="true">G</span>
+          Google로 계속하기
+        </button>
+
         <p className="mt-6 text-center text-sm text-slate-600">
           계정이 없나요?{' '}
-          <Link to="/signup" className="font-semibold text-cyan-700 hover:text-cyan-800">
+          <Link to="/app/signup" className="font-semibold text-cyan-700 hover:text-cyan-800">
             회원가입
           </Link>
         </p>

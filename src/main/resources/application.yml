@@ -6,6 +6,22 @@ server:
     context-path: /delivery
 
 spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:not-configured}
+            client-secret: ${GOOGLE_CLIENT_SECRET:not-configured}
+            scope:
+              - openid
+              - profile
+              - email
+              - https://www.googleapis.com/auth/calendar.events.readonly
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          google:
+            user-name-attribute: email
   jpa:
     properties:
       hibernate:
@@ -39,6 +55,15 @@ logging:
 
 
 delivery:
+  frontend-base-url: ${FUB_FRONTEND_BASE_URL:http://localhost:3500}
+
+  external:
+    naver:
+      client-id: ${NAVER_CLIENT_ID:}
+      client-secret: ${NAVER_CLIENT_SECRET:}
+    elevenst:
+      api-key: ${ELEVENST_API_KEY:}
+
   jwt:
     accessHeader: DeliveryAuthAccess
     refreshHeader: DeliveryAuthRefresh
