@@ -18,7 +18,7 @@ function LoginPage() {
       setIsSubmitting(true)
       await authService().login(email, password)
       await alert.alertSuccess('알림', '로그인되었습니다.')
-      navigate('/complete')
+      navigate('/app/complete')
     } catch (error) {
       alert.alertWarning('알림', error.message)
       setPassword('')

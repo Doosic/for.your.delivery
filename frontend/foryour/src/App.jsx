@@ -10,9 +10,9 @@ function App() {
       <Route element={<AuthLayout />}>
         <Route index element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/app/signup" element={<SignupPage />} />
       </Route>
-      <Route path="/complete" element={<CompletePage />} />
+      <Route path="/app/complete" element={<CompletePage />} />
     </Routes>
   )
 }

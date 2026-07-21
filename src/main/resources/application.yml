@@ -1,6 +1,6 @@
 server:
   port: 8920
-  title: for.your.delivery
+  title: delivery
   version: '@project.version@'
   servlet:
     context-path: /delivery
@@ -37,16 +37,15 @@ logging:
     root: info
     org.springframework: error
 
-for:
-  your:
-    delivery:
-      jwt:
-        accessHeader: DeliveryAuthAccess
-        refreshHeader: DeliveryAuthRefresh
-        accessTimeoutMin: 1000
-        refreshTimeoutMin: 2000
-        secret: PF1ASAN3poeGDs1aoQzXZtYXVzamRwcnBya3JoZGxUZGpkbmZsZ2thUnBna3Nhb2R0cGRubGRwYWhlbXNyamZyamZ0bmRsVGRqZ2xhZW1zdGxya3NlbWZkbHdsYWtzc2tzZG50ZG1mdG5kbFRkamRqc3dwUmt3bHNrc2tmbWZhbGVyaHRrZmtkZ2tmdG5zb3JrZGxUd2tzZ2RrCg
-      kakaoMap:
-        appKey: 0cfac42557573261c0982e1383b077f5
-      content-root-path: //172.30.1.85/vod/fut/content
-      content-root-url: http://172.30.1.85/vod/fut/content
+
+delivery:
+  jwt:
+    accessHeader: DeliveryAuthAccess
+    refreshHeader: DeliveryAuthRefresh
+    accessTimeoutMin: 1000
+    refreshTimeoutMin: 2000
+    secret: PF1ASAN3poeGDs1aoQzXZtYXVzamRwcnBya3JoZGxUZGpkbmZsZ2thUnBna3Nhb2R0cGRubGRwYWhlbXNyamZyamZ0bmRsVGRqZ2xhZW1zdGxya3NlbWZkbHdsYWtzc2tzZG50ZG1mdG5kbFRkamRqc3dwUmt3bHNrc2tmbWZhbGVyaHRrZmtkZ2tmdG5zb3JrZGxUd2tzZ2RrCg
+  kakaoMap:
+    appKey: 0cfac42557573261c0982e1383b077f5
+  content-root-path: //172.30.1.85/vod/fut/content
+  content-root-url: http://172.30.1.85/vod/fut/content

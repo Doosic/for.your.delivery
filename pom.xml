@@ -11,8 +11,8 @@
   <groupId>com.foryour.delivery</groupId>
   <artifactId>for.your.delivery</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <name>for.your.delivery</name>
-  <description>for.your.delivery</description>
+  <name>delivery</name>
+  <description>delivery</description>
   <url/>
   <licenses>
     <license/>
@@ -31,6 +31,75 @@
     <java.version>21</java.version>
     <build.filename>${project.name}</build.filename>
   </properties>
+
+  <profiles>
+    <profile>
+      <id>local</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <environment>local</environment>
+        <maven.test.skip>true</maven.test.skip>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>real</id>
+      <properties>
+        <environment>real</environment>
+        <maven.test.skip>true</maven.test.skip>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.github.eirslett</groupId>
+            <artifactId>frontend-maven-plugin</artifactId>
+            <version>1.12.0</version>
+
+            <configuration>
+              <workingDirectory>frontend/foryour</workingDirectory>
+              <nodeVersion>v20.19.0</nodeVersion>
+              <npmVersion>10.8.2</npmVersion>
+            </configuration>
+
+            <executions>
+              <execution>
+                <id>install-node-and-npm</id>
+                <goals>
+                  <goal>install-node-and-npm</goal>
+                </goals>
+                <phase>generate-resources</phase>
+              </execution>
+
+              <execution>
+                <id>npm-install</id>
+                <goals>
+                  <goal>npm</goal>
+                </goals>
+                <configuration>
+                  <arguments>install --unsafe-perm=true --allow-root --legacy-peer-deps</arguments>
+                </configuration>
+                <phase>generate-resources</phase>
+              </execution>
+
+              <execution>
+                <id>vite-build</id>
+                <goals>
+                  <goal>npm</goal>
+                </goals>
+                <configuration>
+                  <arguments>run build</arguments>
+                </configuration>
+                <phase>generate-resources</phase>
+              </execution>
+            </executions>
+          </plugin>
+
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 
   <dependencies>
     <dependency>

@@ -34,10 +34,6 @@ import static com.foryour.delivery.domain.enums.ErrorCode.LOGIN_FAIL;
 
 public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter implements AuthenticationFailureHandler {
 
-  /* todo
-      RSA ?”í˜¸??session???¬ìš©?˜ì? ?Šìœ¼ë¯€ë¡?DB ?´ìš©?˜ì—¬ ì§„í–‰
-  */
-
   private UserService userService;
   private CProperties cProperties;
 

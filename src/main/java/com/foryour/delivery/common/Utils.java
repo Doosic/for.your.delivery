@@ -12,4 +12,12 @@ public class Utils {
     }
     return null;
   }
+
+  public static String getDateFormatString(LocalDateTime date, String pattern) {
+    if (date != null) {
+      String formatDate = date.format(DateTimeFormatter.ofPattern(pattern));
+      return formatDate;
+    }
+    return null;
+  }
 }

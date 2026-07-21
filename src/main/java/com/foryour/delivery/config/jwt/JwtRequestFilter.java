@@ -67,7 +67,6 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
     String userEmail = null;
 
-    // refreshToken???�용???�발�?
     if(accessToken != null && refreshToken != null && jwtTokenProvider.validateToken(accessToken)){
       if(jwtTokenProvider.validateToken(accessToken)){
         userEmail = jwtTokenProvider.getUsernameFromToken(accessToken);

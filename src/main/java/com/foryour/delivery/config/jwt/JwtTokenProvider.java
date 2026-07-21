@@ -167,10 +167,18 @@ public class JwtTokenProvider {
         .getPayload();
 
     return UserResponseVO.builder()
-        .userSq(Long.parseLong(claims.get("userSq").toString()))
+        .userSq(parseLongClaim(claims.get("userSq")))
         .email((String) claims.get("email"))
         .name((String) claims.get("name"))
         .status(UserStatusCode.valueOf((String) claims.get("status")))
         .build();
+  }
+
+  private Long parseLongClaim(Object value) {
+    if (value instanceof Number number) {
+      return number.longValue();
+    }
+
+    return Long.parseLong(value.toString());
   }
 }

@@ -5,10 +5,12 @@ import './index.css'
 import App from './App.jsx'
 import { SwalProvider } from '@/shared/hooks/useAlert.jsx'
 
+const basename = window.location.pathname.startsWith('/delivery') ? '/delivery' : undefined
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <SwalProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <App />
       </BrowserRouter>
     </SwalProvider>

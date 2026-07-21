@@ -47,7 +47,7 @@ export default defineConfig(({ mode }) => {
         '@/shared': path.resolve(__dirname, './src/shared'),
       },
     },
-    base: isProd ? '/for.your.delivery/resources/app' : '/',
+    base: isProd ? '/delivery/resources/app' : '/',
     build: {
       outDir: path.resolve(__dirname, '../../src/main/resources/static/resources/app'),
       emptyOutDir: true,
