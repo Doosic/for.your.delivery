@@ -3,6 +3,7 @@ import AuthLayout from '@/layouts/AuthLayout.jsx'
 import MainLayout from '@/layouts/MainLayout.jsx'
 import LoginPage from '@/pages/auth/LoginPage.jsx'
 import SignupPage from '@/pages/auth/SignupPage.jsx'
+import OAuthCompletePage from '@/pages/auth/OAuthCompletePage.jsx'
 import HomePage from '@/pages/home/HomePage.jsx'
 import SearchPage from '@/pages/search/SearchPage.jsx'
 import ProductDetailPage from '@/pages/product/ProductDetailPage.jsx'
@@ -34,6 +35,7 @@ function App() {
       <Route element={<AuthLayout />}>
         <Route path="/app/login" element={<LoginPage />} />
         <Route path="/app/signup" element={<SignupPage />} />
+        <Route path="/app/complete" element={<OAuthCompletePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/app/main" replace />} />
     </Routes>

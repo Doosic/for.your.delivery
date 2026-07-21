@@ -23,7 +23,9 @@ function LoginPage() {
       ? 'Google 계정에서 이메일 정보를 받지 못했습니다.'
       : oauthError === 'google_account_link_failed'
         ? 'Google 계정을 FUB 회원 정보와 연결하지 못했습니다.'
-        : 'Google 로그인을 완료하지 못했습니다.'
+        : oauthError === 'google_session_failed'
+          ? 'Google 인증은 완료됐지만 FUB 로그인 세션을 확인하지 못했습니다.'
+          : 'Google 로그인을 완료하지 못했습니다.'
     alert.alertWarning('Google 로그인', message)
   }, [alert, searchParams])
 

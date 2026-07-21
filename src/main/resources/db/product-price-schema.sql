@@ -60,3 +60,29 @@ CREATE INDEX IF NOT EXISTS idx_price_history_offer_collected
   ON tb_fy_product_price_history(offer_sq, collected_at DESC);
 CREATE INDEX IF NOT EXISTS idx_price_history_collected
   ON tb_fy_product_price_history(collected_at DESC);
+
+CREATE TABLE IF NOT EXISTS tb_fy_purchase_click (
+  purchase_click_sq BIGSERIAL PRIMARY KEY,
+  user_sq BIGINT,
+  product_sq BIGINT NOT NULL,
+  offer_sq BIGINT NOT NULL,
+  provider VARCHAR(30) NOT NULL,
+  external_product_id VARCHAR(255) NOT NULL,
+  target_url TEXT NOT NULL,
+  price_at_click BIGINT NOT NULL,
+  source_context VARCHAR(30) NOT NULL DEFAULT 'OTHER',
+  clicked_at TIMESTAMP NOT NULL,
+  create_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  modified_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_purchase_click_user FOREIGN KEY (user_sq)
+    REFERENCES tb_fy_user(user_sq),
+  CONSTRAINT fk_purchase_click_product FOREIGN KEY (product_sq)
+    REFERENCES tb_fy_product(product_sq),
+  CONSTRAINT fk_purchase_click_offer FOREIGN KEY (offer_sq)
+    REFERENCES tb_fy_product_offer(offer_sq)
+);
+
+CREATE INDEX IF NOT EXISTS idx_purchase_click_offer_clicked
+  ON tb_fy_purchase_click(offer_sq, clicked_at DESC);
+CREATE INDEX IF NOT EXISTS idx_purchase_click_user_clicked
+  ON tb_fy_purchase_click(user_sq, clicked_at DESC);

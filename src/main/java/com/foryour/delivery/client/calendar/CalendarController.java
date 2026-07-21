@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import com.foryour.delivery.client.user.bean.UserResponseVO;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,8 +28,9 @@ public class CalendarController extends BaseController {
   ) {
     LocalDate start = from == null ? LocalDate.now() : from;
     LocalDate end = to == null ? start.plusDays(30) : to;
+    UserResponseVO user = getSessionInfo();
     return APIDataResponse.of(googleCalendarService.suggestions(
-        getSessionInfo().getEmail(), start, end, List.of("primary")
+        user.getUserSq(), user.getEmail(), start, end, List.of("primary")
     ));
   }
 
@@ -39,14 +41,16 @@ public class CalendarController extends BaseController {
         : request.calendarIds();
     LocalDate start = request.from() == null ? LocalDate.now() : request.from();
     LocalDate end = request.to() == null ? start.plusDays(30) : request.to();
+    UserResponseVO user = getSessionInfo();
     GoogleCalendarService.CalendarResult result = googleCalendarService.suggestions(
-        getSessionInfo().getEmail(), start, end, calendarIds
+        user.getUserSq(), user.getEmail(), start, end, calendarIds
     );
+    int suggestionCount = result.suggestions().stream().mapToInt(item -> item.items().size()).sum();
     return APIDataResponse.of(Map.of(
         "connected", result.connected(),
         "live", result.live(),
         "eventCount", result.suggestions().size(),
-        "suggestionCount", result.suggestions().size()
+        "suggestionCount", suggestionCount
     ));
   }
 

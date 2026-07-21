@@ -39,7 +39,7 @@ export const authService = () => {
   }
 
   const me = async () => {
-    const response = await api.GET('/delivery/wb/user/user-info', undefined, {
+    const response = await api.GET('/delivery/wb/user/me', undefined, {
       skipUnauthorizedRedirect: true,
     })
     return assertSuccessBody(response, response.msg || '사용자 정보를 불러오지 못했습니다.')

@@ -66,6 +66,7 @@ public class ProductService {
     List<ProductItem> naverItems = naverFuture.join();
     List<ProductItem> elevenItems = elevenFuture.join();
     collectSafely(naverItems);
+    registerSafely(elevenItems);
     List<String> sources = new ArrayList<>();
     if (!naverItems.isEmpty()) sources.add("NAVER");
     if (!elevenItems.isEmpty()) sources.add("ELEVENST");
@@ -296,6 +297,17 @@ public class ProductService {
       productCatalogService.collectAndEnrich(items);
     } catch (Exception error) {
       log.warn("Product price persistence failed: {}", error.getMessage());
+    }
+  }
+
+  private void registerSafely(List<ProductItem> items) {
+    if (items == null || items.isEmpty()) {
+      return;
+    }
+    try {
+      productCatalogService.registerOffers(items);
+    } catch (Exception error) {
+      log.warn("Product offer persistence failed: {}", error.getMessage());
     }
   }
 

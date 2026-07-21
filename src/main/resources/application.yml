@@ -20,7 +20,7 @@ spring:
               - profile
               - email
               - https://www.googleapis.com/auth/calendar.events.readonly
-            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            redirect-uri: ${GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
         provider:
           google:
             user-name-attribute: email

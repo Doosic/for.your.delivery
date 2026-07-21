@@ -51,8 +51,20 @@ public class ProductCatalogService {
     return result;
   }
 
+  @Transactional
+  public synchronized void registerOffers(List<ProductItem> items) {
+    LocalDateTime collectedAt = LocalDateTime.now();
+    for (ProductItem item : items) {
+      if (!isSupportedProvider(item.source()) || item.price() <= 0) {
+        continue;
+      }
+      ProductEntity product = upsertProduct(item);
+      upsertOffer(product, item, 0, collectedAt);
+    }
+  }
+
   private ProductEntity upsertProduct(ProductItem item) {
-    String productKey = "NAVER:" + item.providerCode();
+    String productKey = item.source() + ":" + item.providerCode();
     ProductEntity product = productRepository.findByProductKey(productKey).orElseGet(ProductEntity::new);
     product.setProductKey(productKey);
     product.setName(item.name());
@@ -70,10 +82,10 @@ public class ProductCatalogService {
       LocalDateTime collectedAt
   ) {
     ProductOfferEntity offer = productOfferRepository
-        .findByProviderAndExternalProductId("NAVER", item.providerCode())
+        .findByProviderAndExternalProductId(item.source(), item.providerCode())
         .orElseGet(ProductOfferEntity::new);
     offer.setProductSq(product.getProductSq());
-    offer.setProvider("NAVER");
+    offer.setProvider(item.source());
     offer.setExternalProductId(item.providerCode());
     offer.setMallName(item.mallName());
     offer.setProductUrl(item.productUrl());
@@ -147,5 +159,9 @@ public class ProductCatalogService {
         .replaceAll("[^\\p{L}\\p{N}]", " ")
         .replaceAll("\\s+", " ")
         .trim();
+  }
+
+  private boolean isSupportedProvider(String provider) {
+    return "NAVER".equals(provider) || "ELEVENST".equals(provider);
   }
 }
