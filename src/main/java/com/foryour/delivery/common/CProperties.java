@@ -12,6 +12,7 @@ public class CProperties {
   private Jwt jwt;
   private String frontendBaseUrl;
   private External external = new External();
+  private OpenAi openai = new OpenAi();
 
   @Data
   public static class Jwt {
@@ -37,5 +38,16 @@ public class CProperties {
   @Data
   public static class Elevenst {
     private String apiKey;
+  }
+
+  @Data
+  public static class OpenAi {
+    private String apiKey;
+    private String baseUrl;
+    private String model;
+    private String reasoningEffort;
+    private Integer maxOutputTokens;
+    private Integer connectTimeoutMs;
+    private Integer readTimeoutMs;
   }
 }

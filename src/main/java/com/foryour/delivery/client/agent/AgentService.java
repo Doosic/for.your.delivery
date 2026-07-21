@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -44,6 +45,7 @@ public class AgentService {
   private final AgentDecisionRepository agentDecisionRepository;
   private final PersonalWikiService personalWikiService;
   private final PersonalDataMasker personalDataMasker;
+  private final OpenAiAgentClient openAiAgentClient;
 
   @Transactional
   public AgentSessionView createSession(Long userSq, String title, Map<String, Object> context) {
@@ -79,6 +81,7 @@ public class AgentService {
         .orElseThrow(() -> new APIException(DATA_NOT_EXIST));
 
     String normalizedText = personalDataMasker.mask(text.trim());
+    Map<String, Object> maskedContext = personalDataMasker.mask(context);
     String traceId = "agent-" + userSq + "-" + UUID.randomUUID();
     LocalDateTime messageAt = LocalDateTime.now();
 
@@ -88,14 +91,21 @@ public class AgentService {
     userMessage.setRole(AgentMessageRoleCode.USER);
     userMessage.setMessageType(AgentMessageTypeCode.TEXT);
     userMessage.setContent(normalizedText);
-    userMessage.setPayloadJson(personalDataMasker.mask(context));
+    userMessage.setPayloadJson(maskedContext);
     userMessage.setTraceId(traceId);
     userMessage = agentMessageRepository.save(userMessage);
 
     AgentTypeCode route = route(normalizedText);
     AgentRunEntity run = createRun(userSq, sessionSq, userMessage.getAgentMessageSq(), route, traceId,
-        normalizedText.length(), context == null ? 0 : context.size(), messageAt);
-    AgentReply reply = createReply(userSq, userMessage.getAgentMessageSq(), route, normalizedText);
+        normalizedText.length(), maskedContext.size(), messageAt);
+    AgentReply reply = createReply(
+        userSq,
+        userMessage.getAgentMessageSq(),
+        route,
+        normalizedText,
+        personalDataMasker.mask(session.getContextJson()),
+        maskedContext
+    );
 
     AgentMessageEntity assistantMessage = new AgentMessageEntity();
     assistantMessage.setAgentSessionSq(sessionSq);
@@ -114,11 +124,14 @@ public class AgentService {
     if (reply.candidateWikiEntrySq() != null) {
       saveWikiDecision(run, reply.candidateWikiEntrySq());
     }
+    run.setModelName(reply.modelName());
+    run.setPromptVersion(reply.promptVersion());
     run.setStatus(AgentRunStatusCode.SUCCEEDED);
     run.setOutputSummaryJson(Map.of(
         "messageType", reply.messageType().name(),
         "actionCount", reply.actions().size(),
-        "hasWikiCandidate", reply.candidateWikiEntrySq() != null
+        "hasWikiCandidate", reply.candidateWikiEntrySq() != null,
+        "generationMode", reply.payload().get("generationMode")
     ));
     run.setCompletedAt(LocalDateTime.now());
     agentRunRepository.save(run);
@@ -202,15 +215,25 @@ public class AgentService {
     };
   }
 
-  private AgentReply createReply(Long userSq, Long messageSq, AgentTypeCode route, String text) {
+  private AgentReply createReply(
+      Long userSq,
+      Long messageSq,
+      AgentTypeCode route,
+      String text,
+      Map<String, Object> sessionContext,
+      Map<String, Object> requestContext
+  ) {
+    AgentReply deterministicReply;
     if (AgentTypeCode.PERSONAL_WIKI.equals(route)) {
       WikiAgentReply reply = personalWikiService.respondToChat(userSq, messageSq, text);
       Map<String, Object> payload = new HashMap<>(reply.payload());
       payload.put("route", route.name());
       payload.put("status", "ACCEPTED");
       payload.put("dataMode", "PERSISTED");
-      return new AgentReply(
-          reply.messageType(), reply.text(), payload, reply.actions(), reply.candidateWikiEntrySq());
+      deterministicReply = new AgentReply(
+          reply.messageType(), reply.text(), payload, reply.actions(), reply.candidateWikiEntrySq(),
+          "RULE_BASED", "v1.1");
+      return enhanceReply(route, text, sessionContext, requestContext, deterministicReply);
     }
 
     Map<String, Object> payload = new HashMap<>();
@@ -226,7 +249,64 @@ public class AgentService {
       actions.add(Map.of("type", "CONFIRM_WIKI_ENTRY", "wikiEntrySq", candidateSq));
       actions.add(Map.of("type", "REJECT_WIKI_ENTRY", "wikiEntrySq", candidateSq));
     }
-    return new AgentReply(AgentMessageTypeCode.TEXT, responseText(route), payload, actions, candidateSq);
+    deterministicReply = new AgentReply(
+        AgentMessageTypeCode.TEXT,
+        responseText(route),
+        payload,
+        actions,
+        candidateSq,
+        "RULE_BASED",
+        "v1.1"
+    );
+    return enhanceReply(route, text, sessionContext, requestContext, deterministicReply);
+  }
+
+  private AgentReply enhanceReply(
+      AgentTypeCode route,
+      String text,
+      Map<String, Object> sessionContext,
+      Map<String, Object> requestContext,
+      AgentReply deterministicReply
+  ) {
+    Map<String, Object> safeContext = new LinkedHashMap<>();
+    safeContext.put("userMessage", text);
+    safeContext.put("sessionContext", sessionContext);
+    safeContext.put("requestContext", requestContext);
+    safeContext.put("responseType", deterministicReply.messageType().name());
+    safeContext.put("draftResponse", deterministicReply.text());
+    safeContext.put("resultSummary", personalDataMasker.mask(deterministicReply.payload().toString()));
+
+    return openAiAgentClient.generate(route, personalDataMasker.mask(safeContext))
+        .map(generated -> {
+          Map<String, Object> payload = new HashMap<>(deterministicReply.payload());
+          payload.put("generationMode", "OPENAI");
+          payload.put("model", generated.model());
+          if (generated.responseId() != null) {
+            payload.put("responseId", generated.responseId());
+          }
+          return new AgentReply(
+              deterministicReply.messageType(),
+              generated.text(),
+              payload,
+              deterministicReply.actions(),
+              deterministicReply.candidateWikiEntrySq(),
+              generated.model(),
+              "openai-v1"
+          );
+        })
+        .orElseGet(() -> {
+          Map<String, Object> payload = new HashMap<>(deterministicReply.payload());
+          payload.put("generationMode", "RULE_BASED");
+          return new AgentReply(
+              deterministicReply.messageType(),
+              deterministicReply.text(),
+              payload,
+              deterministicReply.actions(),
+              deterministicReply.candidateWikiEntrySq(),
+              deterministicReply.modelName(),
+              deterministicReply.promptVersion()
+          );
+        });
   }
 
   private AgentRunEntity createRun(
@@ -330,7 +410,9 @@ public class AgentService {
       String text,
       Map<String, Object> payload,
       List<Map<String, Object>> actions,
-      Long candidateWikiEntrySq
+      Long candidateWikiEntrySq,
+      String modelName,
+      String promptVersion
   ) {
   }
 }
