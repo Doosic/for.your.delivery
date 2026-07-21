@@ -1,4 +1,4 @@
-import { LockKeyhole, Mail } from 'lucide-react'
+import { House, LockKeyhole, Mail } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import BrandLogo from '@/components/BrandLogo.jsx'
@@ -50,15 +50,28 @@ function LoginPage() {
     <section className="grid w-full max-w-5xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:grid-cols-[1fr_1.05fr]">
       <div className="hidden bg-slate-950 p-10 text-white md:flex md:flex-col md:justify-between">
         <div>
-          <BrandLogo inverse />
+          <Link to="/app/main" aria-label="메인으로 이동" className="inline-flex">
+            <BrandLogo inverse />
+          </Link>
           <h1 className="mt-8 text-4xl font-semibold leading-tight">필요해지기 전에,<br />먼저 준비하는 쇼핑.</h1>
         </div>
         <p className="text-sm leading-6 text-slate-300">구매 이력과 일정을 연결해 다음 구매 시점을 준비합니다.</p>
       </div>
 
-      <div className="p-7 sm:p-10">
+      <div className="relative p-7 sm:p-10">
+        <Link
+          to="/app/main"
+          className="absolute right-5 top-5 grid size-9 place-items-center rounded-md border border-slate-200 text-slate-500 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+          aria-label="메인으로 이동"
+          title="메인으로 이동"
+        >
+          <House size={18} aria-hidden="true" />
+        </Link>
+
         <div className="mb-8">
-          <BrandLogo compact />
+          <Link to="/app/main" aria-label="메인으로 이동" className="inline-flex">
+            <BrandLogo compact />
+          </Link>
           <h2 className="mt-2 text-2xl font-semibold text-slate-950">로그인</h2>
         </div>
 

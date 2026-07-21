@@ -37,7 +37,6 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
   private Set<String> skipUrls = new HashSet<>(Arrays.asList(
       "/",
-      "/signup",
       "/app/**",
       "/resources/**",
       "/oauth2/**",
