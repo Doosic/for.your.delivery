@@ -7,9 +7,7 @@ import {
   Home,
   PawPrint,
   Pencil,
-  Plus,
   Save,
-  Search,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
@@ -17,7 +15,7 @@ import {
   Utensils,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { wikiService } from '@/services/wikiService.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
@@ -122,8 +120,6 @@ function MyPage() {
   const alert = useAlert()
   const [entries, setEntries] = useState([])
   const [isLoading, setIsLoading] = useState(true)
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState('ALL')
   const [editorEntry, setEditorEntry] = useState(undefined)
   const [form, setForm] = useState(EMPTY_FORM)
   const [isSaving, setIsSaving] = useState(false)
@@ -145,25 +141,6 @@ function MyPage() {
     }
   }, [alert])
 
-  const categories = useMemo(() => {
-    const found = [...new Set(entries.map((entry) => entry.category))]
-    return ['ALL', ...EDIT_CATEGORIES.filter((item) => found.includes(item))]
-  }, [entries])
-
-  const visibleEntries = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
-    return entries.filter((entry) => {
-      if (category !== 'ALL' && entry.category !== category) return false
-      if (!normalizedQuery) return true
-      return `${entry.summary} ${contentText(entry)} ${categoryMeta(entry.category).label}`.toLowerCase().includes(normalizedQuery)
-    })
-  }, [category, entries, query])
-
-  const openCreate = () => {
-    setEditorEntry(null)
-    setForm(EMPTY_FORM)
-  }
-
   const openEdit = (entry) => {
     setEditorEntry(entry)
     setForm({ category: entry.category, summary: contentText(entry) })
@@ -178,12 +155,8 @@ function MyPage() {
     event.preventDefault()
     try {
       setIsSaving(true)
-      const saved = editorEntry
-        ? await wikiService.updateEntry(editorEntry.wikiEntrySq, form)
-        : await wikiService.createEntry(form)
-      setEntries((current) => editorEntry
-        ? current.map((entry) => entry.wikiEntrySq === saved.wikiEntrySq ? saved : entry)
-        : [saved, ...current])
+      const saved = await wikiService.updateEntry(editorEntry.wikiEntrySq, form)
+      setEntries((current) => current.map((entry) => entry.wikiEntrySq === saved.wikiEntrySq ? saved : entry))
       setEditorEntry(undefined)
       await alert.alertSuccess('저장 완료', '다음 추천부터 수정한 개인 정보를 반영합니다.')
     } catch (error) {
@@ -233,37 +206,18 @@ function MyPage() {
         </aside>
 
         <section className="min-w-0">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">개인 위키</h2>
-              <p className="mt-1 text-sm text-slate-500">FUB가 나에 대해 기억하는 정보입니다.</p>
-            </div>
-            <button type="button" onClick={openCreate} className="flex h-10 items-center justify-center gap-2 rounded-md bg-cyan-700 px-4 text-sm font-semibold text-white transition hover:bg-cyan-800">
-              <Plus size={16} aria-hidden="true" /> 기억 추가
-            </button>
-          </div>
-
-          <div className="mt-4 flex h-11 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 shadow-sm focus-within:border-cyan-600 focus-within:ring-2 focus-within:ring-cyan-100">
-            <Search size={17} className="text-slate-400" aria-hidden="true" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none" placeholder="기억 검색" />
-            {query && <button type="button" onClick={() => setQuery('')} className="grid size-7 place-items-center rounded text-slate-400 hover:bg-slate-100" aria-label="검색어 지우기"><X size={15} /></button>}
-          </div>
-
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="위키 카테고리">
-            {categories.map((item) => (
-              <button key={item} type="button" onClick={() => setCategory(item)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${category === item ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-300 bg-white text-slate-500 hover:border-slate-400'}`}>
-                {item === 'ALL' ? `전체 ${entries.length}` : categoryMeta(item).label}
-              </button>
-            ))}
+          <div>
+            <h2 className="text-lg font-semibold">개인 위키</h2>
+            <p className="mt-1 text-sm text-slate-500">FUB가 나에 대해 기억하는 정보입니다.</p>
           </div>
 
           {isLoading ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-40 animate-pulse rounded-lg border border-slate-200 bg-white p-4"><div className="h-6 w-24 rounded bg-slate-100" /><div className="mt-5 h-4 rounded bg-slate-100" /><div className="mt-2 h-4 w-2/3 rounded bg-slate-100" /></div>)}
             </div>
-          ) : visibleEntries.length > 0 ? (
+          ) : entries.length > 0 ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {visibleEntries.map((entry) => {
+              {entries.map((entry) => {
                 const meta = categoryMeta(entry.category)
                 const Icon = meta.icon
                 return (
@@ -287,8 +241,8 @@ function MyPage() {
           ) : (
             <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-white px-5 py-12 text-center">
               <BookOpenText size={28} className="mx-auto text-slate-300" aria-hidden="true" />
-              <p className="mt-3 text-sm font-semibold text-slate-700">표시할 기억이 없어요</p>
-              <p className="mt-1 text-xs text-slate-400">검색어나 카테고리를 바꾸거나 새로운 기억을 추가해 보세요.</p>
+              <p className="mt-3 text-sm font-semibold text-slate-700">저장된 개인화 정보가 없어요</p>
+              <p className="mt-1 text-xs text-slate-400">회원가입에서 입력한 개인화 정보가 여기에 표시됩니다.</p>
             </div>
           )}
         </section>
