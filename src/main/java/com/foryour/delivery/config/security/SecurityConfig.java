@@ -87,7 +87,8 @@ public class SecurityConfig {
         "http://127.0.0.1:3500",
         "http://127.0.0.1:3501",
         "http://localhost:8087",
-        "http://localhost:4173"
+        "http://localhost:4173",
+        "https://codegate.shop"
     ));
     config.setAllowedMethods(Arrays.asList("POST", "GET", "OPTIONS"));
     config.setAllowedHeaders(Arrays.asList("*"));
