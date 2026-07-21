@@ -51,7 +51,8 @@ function MainLayout() {
   }
 
   useEffect(() => {
-    if (status === 'loading') return
+    // 새로고침 직후 refreshAuth 완료 전에는 보호 경로로 강제 이동하지 않는다.
+    if (status === 'loading' || status === 'idle') return
     if (!isLoggedIn && isProtectedPath(location.pathname)) {
       navigate('/app/main', { replace: true })
     }

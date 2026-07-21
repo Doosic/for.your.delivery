@@ -11,7 +11,7 @@ export const refreshAuth = createAsyncThunk('auth/refresh', async (_, { rejectWi
 
 const initialState = {
   user: null,
-  status: 'idle',
+  status: 'loading',
   error: null,
 }
 
