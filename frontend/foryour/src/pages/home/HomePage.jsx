@@ -1,26 +1,35 @@
-import { CalendarDays, Flame, Import, Sparkles, TrendingDown } from 'lucide-react'
+import { Flame, Sparkles, TrendingDown } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
-import ApiNameChip from '@/components/ApiNameChip.jsx'
-import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
 import { homeService } from '@/services/homeService.js'
 import { productService } from '@/services/productService.js'
-import { productMocks } from '@/services/mockData.js'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
+
+const EMPTY_FEED = {
+  live: false,
+  warnings: [],
+  hotProducts: [],
+  bestPriceDeals: [],
+}
 
 function HomePage() {
   const navigate = useNavigate()
   const { user, isLoggedIn } = useAuth()
   const { openLogin } = useOutletContext()
-  const [homeFeed, setHomeFeed] = useState({
-    live: false,
-    warnings: [],
-    hotProducts: productMocks.slice(0, 4),
-    bestPriceDeals: productMocks.slice(0, 3),
-  })
+  const [homeFeed, setHomeFeed] = useState(EMPTY_FEED)
 
   useEffect(() => {
-    homeService.getFeed().then(setHomeFeed)
+    homeService.getFeed()
+      .then((response) => {
+        const live = Boolean(response.live)
+        setHomeFeed({
+          ...response,
+          live,
+          hotProducts: live ? (response.hotProducts ?? []).filter(productService.isLiveProduct) : [],
+          bestPriceDeals: live ? (response.bestPriceDeals ?? []).filter(productService.isLiveProduct) : [],
+        })
+      })
+      .catch(() => setHomeFeed(EMPTY_FEED))
   }, [])
 
   const formatPrice = (value) => `${value.toLocaleString()}원`
@@ -33,7 +42,7 @@ function HomePage() {
         onClick={() => navigate('/app/search')}
         className="flex h-12 w-full items-center rounded-lg border border-slate-300 bg-white px-4 text-left text-sm text-slate-400 shadow-sm transition hover:border-cyan-500"
       >
-        검색어를 입력하세요 — 예: 고양이 사료
+        검색어를 입력하세요
       </button>
 
       {/* 히어로: 게스트=서비스 소개 / 로그인=AI 브리핑 요약 */}
@@ -45,10 +54,10 @@ function HomePage() {
                 <Sparkles size={15} aria-hidden="true" /> AI 브리핑
               </p>
               <h1 className="mt-3 text-xl font-semibold leading-snug sm:text-2xl">
-                {user?.name}님, 오늘은 2건만 사면 돼요
+                {user?.name}님, 오늘의 구매 타이밍을 확인해 보세요
               </h1>
               <p className="mt-2 text-sm leading-6 text-slate-300">
-                세탁세제는 오늘이 적기, 사료는 7/28까지 기다리면 약 2,800원 아껴요.
+                실제 가격과 판매처 정보를 기준으로 살 상품과 기다릴 상품을 정리해 드려요.
               </p>
               <Link
                 to="/app/briefing"
@@ -104,11 +113,10 @@ function HomePage() {
 
       {/* 지금 핫한 상품 */}
       <section>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center">
           <h2 className="flex items-center gap-1.5 text-base font-semibold">
             <Flame size={17} className="text-rose-500" aria-hidden="true" /> 지금 핫한 상품
           </h2>
-          <ApiNameChip>{API_ENDPOINTS.productSearch}</ApiNameChip>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {homeFeed.hotProducts.map((product) => (
@@ -129,15 +137,19 @@ function HomePage() {
             </Link>
           ))}
         </div>
+        {homeFeed.hotProducts.length === 0 && (
+          <p className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
+            상품 정보를 불러오는 중이거나 현재 표시할 상품이 없어요.
+          </p>
+        )}
       </section>
 
       {/* 역대가 도달 */}
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center">
           <h2 className="flex items-center gap-1.5 text-base font-semibold">
             <TrendingDown size={17} className="text-emerald-600" aria-hidden="true" /> 역대가 도달
           </h2>
-          <ApiNameChip>{API_ENDPOINTS.productSearch}</ApiNameChip>
         </div>
         <ul className="divide-y divide-slate-100">
           {homeFeed.bestPriceDeals.map((deal) => (
@@ -165,37 +177,9 @@ function HomePage() {
             </li>
           ))}
         </ul>
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-2">
-        <Link
-          to="/app/imports"
-          className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-cyan-300 hover:shadow"
-        >
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-cyan-50 text-cyan-700">
-            <Import size={20} aria-hidden="true" />
-          </span>
-          <span>
-            <span className="block text-sm font-semibold">구매 목록 가져오기</span>
-            <span className="mt-1 block text-xs leading-5 text-slate-500">
-              로그인 후 네이버, 쿠팡, Gmail 구매내역을 동기화해요.
-            </span>
-          </span>
-        </Link>
-        <Link
-          to="/app/calendar"
-          className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-cyan-300 hover:shadow"
-        >
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-emerald-50 text-emerald-700">
-            <CalendarDays size={20} aria-hidden="true" />
-          </span>
-          <span>
-            <span className="block text-sm font-semibold">구글 캘린더 연결</span>
-            <span className="mt-1 block text-xs leading-5 text-slate-500">
-              일정 기반으로 필요한 물품과 구매 마감일을 추천해요.
-            </span>
-          </span>
-        </Link>
+        {homeFeed.bestPriceDeals.length === 0 && (
+          <p className="py-8 text-center text-sm text-slate-400">아직 역대가로 판단할 실제 가격 데이터가 없어요.</p>
+        )}
       </section>
     </div>
   )

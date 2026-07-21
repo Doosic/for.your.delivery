@@ -1,53 +1,40 @@
 import { Search as SearchIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import ApiNameChip from '@/components/ApiNameChip.jsx'
-import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
 import { productService } from '@/services/productService.js'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
 
 function SearchPage() {
   const { isLoggedIn } = useAuth()
-  const [keyword, setKeyword] = useState('고양이 사료')
+  const [keyword, setKeyword] = useState('')
   const [results, setResults] = useState([])
   const [keywordSuggestions, setKeywordSuggestions] = useState([])
   const [isLoading, setIsLoading] = useState(false)
-  const [isLive, setIsLive] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
   const [warnings, setWarnings] = useState([])
 
   const search = async (nextKeyword = keyword) => {
-    setIsLoading(true)
-    const response = await productService.search({ query: nextKeyword, size: 20 })
-    setResults(response.items ?? [])
-    setKeywordSuggestions(response.keywordSuggestions ?? [])
-    setIsLive(Boolean(response.live))
-    setWarnings(response.warnings ?? [])
-    setIsLoading(false)
-  }
+    const query = nextKeyword.trim()
+    if (!query) return
 
-  useEffect(() => {
-    let active = true
-    productService.search({ query: '고양이 사료', size: 20 }).then((response) => {
-      if (!active) return
+    setIsLoading(true)
+    setHasSearched(true)
+    try {
+      const response = await productService.search({ query, size: 20 })
       setResults(response.items ?? [])
       setKeywordSuggestions(response.keywordSuggestions ?? [])
-      setIsLive(Boolean(response.live))
       setWarnings(response.warnings ?? [])
-    })
-    return () => {
-      active = false
+    } catch {
+      setResults([])
+      setKeywordSuggestions([])
+      setWarnings(['상품 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'])
+    } finally {
+      setIsLoading(false)
     }
-  }, [])
+  }
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <ApiNameChip>{API_ENDPOINTS.productSearch}</ApiNameChip>
-        <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${isLive ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-          {isLive ? '실제 데이터' : '목업 데이터'}
-        </span>
-      </div>
-
       {/* 검색바 */}
       <form
         className="flex h-12 items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 shadow-sm focus-within:border-cyan-600 focus-within:ring-2 focus-within:ring-cyan-100"
@@ -114,8 +101,12 @@ function SearchPage() {
         ))}
       </div>
 
-      {results.length === 0 && (
+      {hasSearched && !isLoading && results.length === 0 && (
         <p className="py-10 text-center text-sm text-slate-400">검색 결과가 없어요</p>
+      )}
+
+      {!hasSearched && (
+        <p className="py-10 text-center text-sm text-slate-400">찾고 싶은 상품명을 입력해 주세요</p>
       )}
 
       {/* AI 맞춤 안내 */}

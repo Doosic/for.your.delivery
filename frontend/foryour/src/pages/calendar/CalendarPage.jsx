@@ -1,8 +1,6 @@
 import { CalendarDays, CheckCircle2, Link as LinkIcon, RefreshCw } from 'lucide-react'
 import { startTransition, useEffect, useMemo, useState } from 'react'
 import { useOutletContext, useSearchParams } from 'react-router-dom'
-import ApiNameChip from '@/components/ApiNameChip.jsx'
-import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
 import { calendarService } from '@/services/calendarService.js'
 import { importService } from '@/services/importService.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
@@ -27,7 +25,6 @@ function CalendarPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
   const [events, setEvents] = useState([])
-  const [isLive, setIsLive] = useState(false)
   const [warning, setWarning] = useState(null)
 
   useEffect(() => {
@@ -40,7 +37,6 @@ function CalendarPage() {
         startTransition(() => {
           setEvents(response.suggestions ?? [])
           setConnected(Boolean(response.connected))
-          setIsLive(Boolean(response.live))
           setWarning(response.warning || null)
           setIsLoading(false)
         })
@@ -71,7 +67,6 @@ function CalendarPage() {
   const applyResponse = (response) => {
     setEvents(response.suggestions ?? [])
     setConnected(Boolean(response.connected))
-    setIsLive(Boolean(response.live))
     setWarning(response.warning || null)
     setIsLoading(false)
     return response
@@ -129,17 +124,6 @@ function CalendarPage() {
           <p className="mt-1 text-sm leading-6 text-slate-500">
             오늘부터 선택한 기간의 Google Calendar 일정을 불러와 표시합니다.
           </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <ApiNameChip>{API_ENDPOINTS.calendarSuggestions}</ApiNameChip>
-            <ApiNameChip>{API_ENDPOINTS.calendarSync}</ApiNameChip>
-            <span
-              className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
-                isLive ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-              }`}
-            >
-              {isLive ? '실제 데이터' : '목업 데이터'}
-            </span>
-          </div>
         </div>
         <button
           type="button"

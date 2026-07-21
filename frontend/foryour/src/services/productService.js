@@ -3,10 +3,34 @@ import { assertSuccessBody } from '@/shared/libs/api-result.js'
 
 const SELECTED_PRODUCT_KEY = 'delivery-selected-product'
 
+const isLiveProduct = (product) =>
+  product &&
+  product.source !== 'DEMO' &&
+  product.providerCode !== 'SERVER_DEMO' &&
+  product.providerCode !== 'LOCAL_FALLBACK'
+
 export const productService = {
-  async search({ query = '고양이 사료', size = 20 }) {
-    const response = await api.GET('/delivery/wp/products', { query, size })
-    return assertSuccessBody(response, response.msg || 'fail')
+  async search({ query = '', size = 20 }) {
+    const normalizedQuery = query.trim()
+    if (!normalizedQuery) {
+      return {
+        query: '',
+        live: false,
+        items: [],
+        keywordSuggestions: [],
+        warnings: [],
+      }
+    }
+
+    const response = await api.GET('/delivery/wp/products', { query: normalizedQuery, size })
+    const body = assertSuccessBody(response, response.msg || 'fail')
+    const items = (body.items ?? []).filter(isLiveProduct)
+    return {
+      ...body,
+      live: Boolean(body.live && items.length),
+      items,
+      warnings: (body.warnings ?? []).filter((warning) => !warning.includes('데모')),
+    }
   },
 
   async detail(productSq) {
@@ -16,7 +40,23 @@ export const productService = {
     }
 
     const response = await api.GET(`/delivery/wp/products/${productSq}`)
-    return assertSuccessBody(response, response.msg || 'fail').product
+    const product = assertSuccessBody(response, response.msg || 'fail').product
+    return isLiveProduct(product) ? product : null
+  },
+
+  openSeller(product, { isLoggedIn = false, sourceContext = 'OTHER' } = {}) {
+    if (!product?.productUrl) return false
+
+    const provider = encodeURIComponent(product.source)
+    const providerCode = encodeURIComponent(product.providerCode)
+    const access = isLoggedIn ? 'wb' : 'wp'
+    void api.POST(
+      `/delivery/${access}/products/${provider}/${providerCode}/purchase-click`,
+      { sourceContext },
+      { skipUnauthorizedRedirect: true },
+    ).catch(() => undefined)
+    window.open(product.productUrl, '_blank', 'noopener,noreferrer')
+    return true
   },
 
   setSelectedProduct(product) {
@@ -31,4 +71,6 @@ export const productService = {
       return null
     }
   },
+
+  isLiveProduct,
 }

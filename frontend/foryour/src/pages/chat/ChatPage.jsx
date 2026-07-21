@@ -1,11 +1,8 @@
-import { SendHorizontal } from 'lucide-react';
+import { ExternalLink, SendHorizontal } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import ApiNameChip from '@/components/ApiNameChip.jsx';
-import { API_ENDPOINTS } from '@/services/apiBlueprint.js';
 import { agentService } from '@/services/agentService.js';
 import { briefingService } from '@/services/briefingService.js';
-import { briefingMock } from '@/services/mockData.js';
 import { productService } from '@/services/productService.js';
 import { useAuth } from '@/shared/hooks/useAuth.jsx';
 
@@ -16,24 +13,67 @@ const BADGE_CLASS = {
   PLAN: 'bg-cyan-50 text-cyan-700',
 };
 
-const toProduct = (item, productSq) => ({
-  productSq: String(productSq),
-  name: item.name,
-  price: item.price ?? 0,
-  mallName: item.mallName || '추천 상품',
-  source: item.source || 'DEMO',
-  imageUrl: item.imageUrl || '',
-  productUrl: '',
-  providerCode: item.providerCode || 'LOCAL_FALLBACK',
-});
+const EMPTY_BRIEFING = {
+  summary: '오늘의 실제 상품과 가격 정보를 확인하고 있어요.',
+  sections: [],
+  live: false,
+};
 
-const resolveProductSq = (item, index) =>
-  item.productSq ||
-  `BRIEF-${index + 1}-${encodeURIComponent(item.name).slice(0, 40)}`;
+function ProductRecommendation({ item, isLoggedIn, showDecision = false }) {
+  const imageUrl = item.imageSources?.card1x || item.imageUrl;
+  const image2x = item.imageSources?.card2x;
+
+  return (
+    <li className='flex items-center gap-2 rounded-md transition hover:bg-slate-50'>
+      <Link
+        to={`/app/products/${encodeURIComponent(item.productSq)}`}
+        onClick={() => productService.setSelectedProduct(item)}
+        className='flex min-w-0 flex-1 items-center gap-3 p-1'
+      >
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            srcSet={image2x && image2x !== imageUrl ? `${imageUrl} 1x, ${image2x} 2x` : undefined}
+            alt=''
+            className='h-12 w-12 shrink-0 rounded-md object-cover'
+          />
+        ) : (
+          <div className='h-12 w-12 shrink-0 rounded-md bg-slate-100' />
+        )}
+        <div className='min-w-0 flex-1'>
+          <p className='truncate text-sm font-medium'>{item.name}</p>
+          <p className='truncate text-xs text-slate-500'>
+            {Number(item.price).toLocaleString()}원 · {item.mallName}
+          </p>
+          {showDecision && (
+            <span
+              className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+                BADGE_CLASS[item.decision] ?? BADGE_CLASS.PLAN
+              }`}
+            >
+              {item.label}
+            </span>
+          )}
+        </div>
+      </Link>
+      {item.productUrl && (
+        <button
+          type='button'
+          onClick={() => productService.openSeller(item, { isLoggedIn, sourceContext: 'AGENT_CHAT' })}
+          className='grid h-9 w-9 shrink-0 place-items-center rounded-md border border-slate-200 text-slate-500 transition hover:border-cyan-300 hover:text-cyan-700'
+          aria-label={`${item.mallName} 판매처 열기`}
+          title='판매처 열기'
+        >
+          <ExternalLink size={15} aria-hidden='true' />
+        </button>
+      )}
+    </li>
+  );
+}
 
 function ChatPage() {
   const { user, isLoggedIn } = useAuth();
-  const [briefing, setBriefing] = useState({ ...briefingMock, live: false });
+  const [briefing, setBriefing] = useState(EMPTY_BRIEFING);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
 
@@ -55,10 +95,6 @@ function ChatPage() {
     ]);
   };
 
-  const openProductDetail = (item, productSq) => {
-    productService.setSelectedProduct(toProduct(item, productSq));
-  };
-
   return (
     <div className='mx-auto flex h-[calc(100vh-11rem)] max-w-3xl flex-col md:h-[calc(100vh-9rem)]'>
       <header className='pb-4'>
@@ -66,19 +102,6 @@ function ChatPage() {
           좋은 아침이에요, {isLoggedIn ? `${user?.name}님` : '게스트님'}
         </h1>
         <p className='mt-1 text-sm text-slate-500'>오늘의 브리핑</p>
-        <div className='mt-2 flex flex-wrap items-center gap-2'>
-          <ApiNameChip>{API_ENDPOINTS.briefingToday}</ApiNameChip>
-          <ApiNameChip>{API_ENDPOINTS.chatStream}</ApiNameChip>
-          <span
-            className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
-              briefing.live
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'bg-amber-50 text-amber-700'
-            }`}
-          >
-            {briefing.live ? '실제 데이터' : '목업 데이터'}
-          </span>
-        </div>
       </header>
 
       <div className='flex-1 space-y-3 overflow-y-auto pb-4'>
@@ -89,45 +112,20 @@ function ChatPage() {
             </p>
 
             <div className='grid gap-3 md:grid-cols-3'>
-              {briefing.sections.map((section) => (
+              {briefing.sections.filter((section) => section.items.length > 0).map((section) => (
                 <section
                   key={section.title}
                   className='rounded-lg border border-slate-200 bg-white p-4 shadow-sm'
                 >
                   <h2 className='text-sm font-semibold'>{section.title}</h2>
                   <ul className='mt-3 space-y-3'>
-                    {section.items.map((item, index) => {
-                      const productSq = resolveProductSq(item, index);
-                      return (
-                        <li key={productSq}>
-                          <Link
-                            to={`/app/products/${encodeURIComponent(productSq)}`}
-                            onClick={() => openProductDetail(item, productSq)}
-                            className='flex cursor-pointer items-center gap-3 rounded-md transition hover:bg-slate-50'
-                          >
-                            {item.imageUrl ? (
-                              <img
-                                src={item.imageUrl}
-                                alt=''
-                                className='h-10 w-10 shrink-0 rounded-md object-cover'
-                              />
-                            ) : (
-                              <div className='h-10 w-10 shrink-0 rounded-md bg-gradient-to-br from-slate-200 to-slate-50' />
-                            )}
-                            <div className='min-w-0 flex-1'>
-                              <p className='truncate text-sm font-medium'>
-                                {item.name}
-                              </p>
-                              <p className='truncate text-xs text-slate-500'>
-                                {item.price > 0
-                                  ? `${Number(item.price).toLocaleString()}원 · ${item.mallName || item.source || ''}`
-                                  : item.note}
-                              </p>
-                            </div>
-                          </Link>
-                        </li>
-                      );
-                    })}
+                    {section.items.map((item) => (
+                      <ProductRecommendation
+                        key={item.productSq}
+                        item={item}
+                        isLoggedIn={isLoggedIn}
+                      />
+                    ))}
                   </ul>
                 </section>
               ))}
@@ -154,27 +152,14 @@ function ChatPage() {
                 <div className='rounded-lg border border-slate-200 bg-white p-4 shadow-sm'>
                   <p className='text-sm font-semibold'>{message.card.title}</p>
                   <ul className='mt-2 space-y-2'>
-                    {message.card.items.map((item, index) => {
-                      const productSq = resolveProductSq(item, index);
-                      return (
-                        <li key={productSq}>
-                          <Link
-                            to={`/app/products/${encodeURIComponent(productSq)}`}
-                            onClick={() => openProductDetail(item, productSq)}
-                            className='flex items-center justify-between gap-3 rounded-md px-1 py-1 text-sm transition hover:bg-slate-50'
-                          >
-                            <span>{item.name}</span>
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                BADGE_CLASS[item.decision] ?? BADGE_CLASS.PLAN
-                              }`}
-                            >
-                              {item.label}
-                            </span>
-                          </Link>
-                        </li>
-                      );
-                    })}
+                    {message.card.items.map((item) => (
+                      <ProductRecommendation
+                        key={item.productSq}
+                        item={item}
+                        isLoggedIn={isLoggedIn}
+                        showDecision
+                      />
+                    ))}
                   </ul>
                 </div>
               )}

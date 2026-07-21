@@ -68,7 +68,7 @@ delivery:
     read-timeout-ms: 15000
 
   google-calendar:
-    redirect-uri: ${GOOGLE_CALENDAR_REDIRECT_URI=https://codegate.shop/delivery/wp/calendar/google/callback}
+    redirect-uri: ${GOOGLE_CALENDAR_REDIRECT_URI:http://localhost:30100/delivery/wp/calendar/google/callback}
 
   external:
     naver:

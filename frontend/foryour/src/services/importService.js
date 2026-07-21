@@ -1,5 +1,4 @@
 import api from '@/shared/libs/api.js'
-import { importMock } from '@/services/mockData.js'
 import { assertSuccessBody } from '@/shared/libs/api-result.js'
 
 export const importService = {
@@ -8,7 +7,7 @@ export const importService = {
       const response = await api.GET('/delivery/wp/imports/items', { status: 'NEW', page: 0, size: 20 })
       return assertSuccessBody(response, response.msg || 'fail')
     } catch {
-      return { items: importMock.items, live: false }
+      return { items: [], live: false }
     }
   },
 
@@ -37,7 +36,7 @@ export const importService = {
       const response = await api.GET('/delivery/wp/import-connections')
       return assertSuccessBody(response, response.msg || 'fail')
     } catch {
-      return { connections: importMock.connections, live: false }
+      return { connections: [], live: false }
     }
   },
 
@@ -54,7 +53,7 @@ export const importService = {
       }
       return body
     } catch {
-      return { source, connected: true, live: false }
+      return { source, connected: false, live: false }
     }
   },
 }

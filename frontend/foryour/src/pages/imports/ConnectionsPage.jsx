@@ -1,10 +1,7 @@
 import { CalendarDays, ChevronLeft, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import ApiNameChip from '@/components/ApiNameChip.jsx'
-import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
 import { importService } from '@/services/importService.js'
-import { importMock } from '@/services/mockData.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
 
 const SOURCE_ICON_BG = {
@@ -18,17 +15,13 @@ const HIDDEN_SOURCES = new Set(['CODEF', 'FILE'])
 
 function ConnectionsPage() {
   const alert = useAlert()
-  const [connections, setConnections] = useState(
-    importMock.connections.filter((connection) => !HIDDEN_SOURCES.has(connection.source)),
-  )
-  const [isLive, setIsLive] = useState(false)
+  const [connections, setConnections] = useState([])
 
   useEffect(() => {
     importService.getConnections().then((response) => {
       setConnections(
         (response.connections ?? []).filter((connection) => !HIDDEN_SOURCES.has(connection.source)),
       )
-      setIsLive(Boolean(response.live))
     })
   }, [])
 
@@ -62,13 +55,6 @@ function ConnectionsPage() {
         </Link>
         <div>
           <h1 className="text-xl font-semibold">소스 연결 관리</h1>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <ApiNameChip>{API_ENDPOINTS.importConnections}</ApiNameChip>
-            <ApiNameChip>{API_ENDPOINTS.importOAuthStart}</ApiNameChip>
-            <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${isLive ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-              {isLive ? '실제 데이터' : '목업 데이터'}
-            </span>
-          </div>
         </div>
       </header>
 

@@ -1,10 +1,7 @@
 import { LogIn, Settings, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
-import ApiNameChip from '@/components/ApiNameChip.jsx'
-import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
 import { importService } from '@/services/importService.js'
-import { importMock } from '@/services/mockData.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
 
@@ -12,14 +9,12 @@ function ImportListPage() {
   const alert = useAlert()
   const { isLoggedIn } = useAuth()
   const { openLogin } = useOutletContext()
-  const [items, setItems] = useState(importMock.items)
+  const [items, setItems] = useState([])
   const [checked, setChecked] = useState(() => new Set())
-  const [isLive, setIsLive] = useState(false)
 
   useEffect(() => {
     importService.getItems().then((response) => {
-      setItems(response.items)
-      setIsLive(Boolean(response.live))
+      setItems(response.live ? (response.items ?? []) : [])
     })
   }, [])
 
@@ -54,12 +49,6 @@ function ImportListPage() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">구매목록 가져오기</h1>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <ApiNameChip>{API_ENDPOINTS.importsItems}</ApiNameChip>
-            <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${isLive ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-              {isLive ? '실제 데이터' : '목업 데이터'}
-            </span>
-          </div>
         </div>
         <Link
           to="/app/imports/connections"
@@ -75,7 +64,7 @@ function ImportListPage() {
             <LogIn size={16} aria-hidden="true" /> 로그인이 필요한 화면
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            네이버, 쿠팡, Gmail 구매내역과 구글 캘린더 일정은 로그인 후 연결할 수 있어요. 지금은 화면 흐름 확인을 위한 예시 데이터가 표시됩니다.
+            구매내역과 캘린더 일정은 로그인 후 연결할 수 있어요.
           </p>
           <button
             type="button"
@@ -92,7 +81,7 @@ function ImportListPage() {
           <h2 className="text-base font-semibold">가져온 구매목록 {items.length}건</h2>
         </div>
         {items.length === 0 ? (
-          <p className="p-10 text-center text-sm text-slate-400">모든 항목이 재고에 반영됐어요</p>
+          <p className="p-10 text-center text-sm text-slate-400">가져온 구매목록이 없어요</p>
         ) : (
           <ul className="divide-y divide-slate-100">
             {items.map((item) => (

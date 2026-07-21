@@ -1,8 +1,6 @@
 import { ChevronLeft, ExternalLink } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import ApiNameChip from '@/components/ApiNameChip.jsx'
-import { API_ENDPOINTS } from '@/services/apiBlueprint.js'
 import { productService } from '@/services/productService.js'
 import { useAlert } from '@/shared/hooks/useAlert.jsx'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
@@ -27,23 +25,21 @@ function ProductDetailPage() {
     )
   }
 
+  const detailImageUrl = product.imageSources?.detail || product.imageUrl
+
   const handleBuy = () => {
-    if (product.productUrl) {
-      window.open(product.productUrl, '_blank', 'noopener,noreferrer')
-      return
-    }
-    alert.alertWarning('알림', '판매처 링크가 아직 없어요.')
+    const opened = productService.openSeller(product, { isLoggedIn, sourceContext: 'OTHER' })
+    if (!opened) alert.alertWarning('알림', '판매처 링크가 아직 없어요.')
   }
 
   const reasons = [
     { label: '가격 정보', detail: product.price > 0 ? '판매가 확인됨' : '가격 확인 필요', good: product.price > 0 },
     { label: '판매처', detail: product.mallName || product.source, good: true },
-    { label: '데이터', detail: product.providerCode === 'LOCAL_FALLBACK' ? '목업 fallback' : '외부 API', good: product.providerCode !== 'LOCAL_FALLBACK' },
   ]
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center">
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -51,14 +47,13 @@ function ProductDetailPage() {
         >
           <ChevronLeft size={16} aria-hidden="true" /> 뒤로
         </button>
-        <ApiNameChip>{API_ENDPOINTS.productDetail}</ApiNameChip>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
         <div className="space-y-5">
           <div className="flex items-center justify-center rounded-lg border border-slate-200 bg-white p-10 shadow-sm">
-            {product.imageUrl ? (
-              <img src={product.imageUrl} alt="" className="aspect-[4/3] w-full max-w-sm rounded-lg object-contain" />
+            {detailImageUrl ? (
+              <img src={detailImageUrl} alt="" className="aspect-[4/3] w-full max-w-sm rounded-lg object-contain" />
             ) : (
               <div className="aspect-[4/3] w-full max-w-sm rounded-lg bg-gradient-to-br from-slate-200 to-slate-50" />
             )}
@@ -78,9 +73,8 @@ function ProductDetailPage() {
 
             <ul className="mt-4 space-y-2">
               {[
-                ['데이터 출처', product.providerCode],
                 ['판매처', product.mallName],
-                ['상품번호', product.productSq],
+                ['카테고리', product.categories?.join(' · ') || '상품'],
               ].map(([label, value]) => (
                 <li key={label} className="flex items-center justify-between gap-4 text-sm">
                   <span className="text-slate-500">{label}</span>
