@@ -39,6 +39,8 @@ public class JwtRequestFilter extends OncePerRequestFilter {
       "/login",
       "/logout",
       "/login/**",
+      "/app/**",
+      "/resources/**",
       "/wp/**"
   ));
 
