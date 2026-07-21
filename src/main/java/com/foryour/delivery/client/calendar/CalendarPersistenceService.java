@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -30,10 +31,15 @@ public class CalendarPersistenceService {
     LocalDateTime syncedAt = LocalDateTime.now();
     List<CalendarEventEntity> events = new ArrayList<>();
     for (CalendarEventInput input : inputs) {
-      CalendarEventEntity event = calendarEventRepository
+      Optional<CalendarEventEntity> eventOptional = calendarEventRepository
           .findByUserSqAndProviderAndProviderCalendarIdAndExternalEventId(
-              userSq, "GOOGLE", input.calendarId(), input.externalEventId())
-          .orElseGet(CalendarEventEntity::new);
+              userSq, "GOOGLE", input.calendarId(), input.externalEventId());
+      CalendarEventEntity event;
+      if (eventOptional.isPresent()) {
+        event = eventOptional.get();
+      } else {
+        event = new CalendarEventEntity();
+      }
       event.setUserSq(userSq);
       event.setProvider("GOOGLE");
       event.setProviderCalendarId(input.calendarId());
@@ -76,15 +82,16 @@ public class CalendarPersistenceService {
 
   @Transactional(readOnly = true)
   public List<StoredCalendarEvent> events(Long userSq, LocalDateTime from, LocalDateTime to) {
-    return calendarEventRepository
+    List<CalendarEventEntity> events = calendarEventRepository
         .findAllByUserSqAndStatusAndStartsAtBetweenOrderByStartsAtAsc(
-            userSq, CalendarEventStatusCode.ACTIVE, from, to)
-        .stream()
-        .map(event -> new StoredCalendarEvent(
-            event,
-            calendarItemSuggestionRepository
-                .findAllByCalendarEventSqOrderByCalendarSuggestionSqAsc(event.getCalendarEventSq())))
-        .toList();
+            userSq, CalendarEventStatusCode.ACTIVE, from, to);
+    List<StoredCalendarEvent> storedEvents = new ArrayList<>();
+    for (CalendarEventEntity event : events) {
+      List<CalendarItemSuggestionEntity> suggestions = calendarItemSuggestionRepository
+          .findAllByCalendarEventSqOrderByCalendarSuggestionSqAsc(event.getCalendarEventSq());
+      storedEvents.add(new StoredCalendarEvent(event, suggestions));
+    }
+    return storedEvents;
   }
 
   private void applyProduct(
@@ -100,9 +107,11 @@ public class CalendarPersistenceService {
     suggestion.setProductUrl(product.productUrl());
     suggestion.setImageUrl(product.imageUrl());
     suggestion.setPrice(product.price());
-    productOfferRepository
-        .findByProviderAndExternalProductId(product.provider(), product.providerCode())
-        .ifPresent(offer -> applyOfferIds(suggestion, offer));
+    Optional<ProductOfferEntity> offerOptional =
+        productOfferRepository.findByProviderAndExternalProductId(product.provider(), product.providerCode());
+    if (offerOptional.isPresent()) {
+      applyOfferIds(suggestion, offerOptional.get());
+    }
   }
 
   private void applyOfferIds(

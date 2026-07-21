@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static com.foryour.delivery.domain.enums.ErrorCode.DATA_NOT_EXIST;
@@ -61,8 +62,12 @@ public class AgentService {
 
   @Transactional(readOnly = true)
   public AgentSessionView session(Long userSq, Long sessionSq) {
-    AgentSessionEntity session = agentSessionRepository.findByAgentSessionSqAndUserSq(sessionSq, userSq)
-        .orElseThrow(() -> new APIException(DATA_NOT_EXIST));
+    Optional<AgentSessionEntity> sessionOptional =
+        agentSessionRepository.findByAgentSessionSqAndUserSq(sessionSq, userSq);
+    if (sessionOptional.isEmpty()) {
+      throw new APIException(DATA_NOT_EXIST);
+    }
+    AgentSessionEntity session = sessionOptional.get();
     List<AgentMessageEntity> messages = agentMessageRepository
         .findAllByAgentSessionSqAndUserSqOrderByAgentMessageSqAsc(sessionSq, userSq);
 
@@ -76,9 +81,13 @@ public class AgentService {
       String text,
       Map<String, Object> context
   ) {
-    AgentSessionEntity session = agentSessionRepository.findByAgentSessionSqAndUserSq(sessionSq, userSq)
-        .filter(found -> AgentSessionStatusCode.ACTIVE.equals(found.getStatus()))
-        .orElseThrow(() -> new APIException(DATA_NOT_EXIST));
+    Optional<AgentSessionEntity> sessionOptional =
+        agentSessionRepository.findByAgentSessionSqAndUserSq(sessionSq, userSq);
+    if (sessionOptional.isEmpty()
+        || !AgentSessionStatusCode.ACTIVE.equals(sessionOptional.get().getStatus())) {
+      throw new APIException(DATA_NOT_EXIST);
+    }
+    AgentSessionEntity session = sessionOptional.get();
 
     String normalizedText = personalDataMasker.mask(text.trim());
     Map<String, Object> maskedContext = personalDataMasker.mask(context);
@@ -151,13 +160,17 @@ public class AgentService {
   }
 
   private AgentSessionView toView(AgentSessionEntity session, List<AgentMessageEntity> messages) {
+    List<AgentMessageView> messageViews = new java.util.ArrayList<>();
+    for (AgentMessageEntity message : messages) {
+      messageViews.add(toMessageView(message));
+    }
     return new AgentSessionView(
         session.getAgentSessionSq(),
         session.getSessionType().name(),
         session.getTitle(),
         session.getStatus().name(),
         session.getContextJson(),
-        messages.stream().map(this::toMessageView).toList(),
+        messageViews,
         session.getLastMessageAt(),
         session.getCreateDate(),
         session.getModifiedDate()
@@ -206,13 +219,20 @@ public class AgentService {
   }
 
   private String responseText(AgentTypeCode route) {
-    return switch (route) {
-      case BRIEFING_SHOPPING -> "쇼핑 요청을 확인했어요. 상품과 재고 데이터를 연결해 추천을 준비할게요.";
-      case CALENDAR_PREPARATION -> "일정 준비 요청을 확인했어요. 연결된 일정에서 필요한 품목을 분석할 준비가 됐어요.";
-      case PRICE_INTELLIGENCE -> "가격 분석 요청을 확인했어요. 가격 이력에서 최저가와 구매 시점을 비교할게요.";
-      case PERSONAL_WIKI -> "개인 위키 요청을 확인했어요.";
-      case CONVERSATION_ORCHESTRATOR -> "요청을 확인했어요. 필요한 정보를 이어서 알려주세요.";
-    };
+    switch (route) {
+      case BRIEFING_SHOPPING:
+        return "쇼핑 요청을 확인했어요. 상품과 재고 데이터를 연결해 추천을 준비할게요.";
+      case CALENDAR_PREPARATION:
+        return "일정 준비 요청을 확인했어요. 연결된 일정에서 필요한 품목을 분석할 준비가 됐어요.";
+      case PRICE_INTELLIGENCE:
+        return "가격 분석 요청을 확인했어요. 가격 이력에서 최저가와 구매 시점을 비교할게요.";
+      case PERSONAL_WIKI:
+        return "개인 위키 요청을 확인했어요.";
+      case CONVERSATION_ORCHESTRATOR:
+        return "요청을 확인했어요. 필요한 정보를 이어서 알려주세요.";
+      default:
+        throw new IllegalArgumentException("Unsupported route: " + route);
+    }
   }
 
   private AgentReply createReply(

@@ -1,4 +1,4 @@
-import { Bot, CalendarDays, Home, Import, LogOut, Search, Sparkles } from 'lucide-react'
+import { CalendarDays, Home, Import, LogOut, Search, Sparkles } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import BrandLogo from '@/components/BrandLogo.jsx'
@@ -10,7 +10,6 @@ const NAV_ITEMS = [
   { to: '/app/main', label: '홈', icon: Home },
   { to: '/app/search', label: '검색', icon: Search },
   { to: '/app/briefing', label: 'AI 브리핑', icon: Sparkles, requiresAuth: true },
-  { to: '/app/agent', label: 'Agent 쇼핑', icon: Bot, requiresAuth: true },
   { to: '/app/imports', label: '구매목록', icon: Import, requiresAuth: true },
   { to: '/app/calendar', label: '캘린더', icon: CalendarDays, requiresAuth: true },
 ]

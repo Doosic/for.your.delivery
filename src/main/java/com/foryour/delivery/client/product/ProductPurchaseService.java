@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 
 import static com.foryour.delivery.domain.enums.ErrorCode.DATA_NOT_EXIST;
@@ -35,10 +36,13 @@ public class ProductPurchaseService {
       PurchaseClickSourceCode sourceContext
   ) {
     String normalizedProvider = normalizeProvider(provider);
-    ProductOfferEntity offer = productOfferRepository
-        .findByProviderAndExternalProductId(normalizedProvider, providerCode)
-        .filter(found -> ProductOfferStatusCode.ACTIVE.equals(found.getStatus()))
-        .orElseThrow(() -> new APIException(DATA_NOT_EXIST));
+    Optional<ProductOfferEntity> offerOptional =
+        productOfferRepository.findByProviderAndExternalProductId(normalizedProvider, providerCode);
+    if (offerOptional.isEmpty()
+        || !ProductOfferStatusCode.ACTIVE.equals(offerOptional.get().getStatus())) {
+      throw new APIException(DATA_NOT_EXIST);
+    }
+    ProductOfferEntity offer = offerOptional.get();
 
     PurchaseClickEntity click = new PurchaseClickEntity();
     click.setUserSq(userSq);

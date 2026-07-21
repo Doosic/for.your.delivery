@@ -30,6 +30,7 @@
   <properties>
     <java.version>21</java.version>
     <build.filename>${project.name}</build.filename>
+    <querydsl.version>5.0.0</querydsl.version>
   </properties>
 
   <profiles>
@@ -131,18 +132,18 @@
       <groupId>com.querydsl</groupId>
       <artifactId>querydsl-jpa</artifactId>
       <classifier>jakarta</classifier>
-      <version>5.0.0</version>
+      <version>${querydsl.version}</version>
     </dependency>
     <dependency>
       <groupId>com.querydsl</groupId>
       <artifactId>querydsl-sql-spring</artifactId>
-      <version>5.0.0</version>
+      <version>${querydsl.version}</version>
     </dependency>
 
     <dependency>
       <groupId>com.querydsl</groupId>
       <artifactId>querydsl-apt</artifactId>
-      <version>5.0.0</version>
+      <version>${querydsl.version}</version>
       <classifier>jakarta</classifier>
       <scope>provided</scope>
     </dependency>
@@ -150,13 +151,13 @@
     <dependency>
       <groupId>com.querydsl</groupId>
       <artifactId>querydsl-sql</artifactId>
-      <version>5.0.0</version>
+      <version>${querydsl.version}</version>
     </dependency>
 
     <dependency>
       <groupId>com.querydsl</groupId>
       <artifactId>querydsl-sql-codegen</artifactId>
-      <version>5.0.0</version>
+      <version>${querydsl.version}</version>
     </dependency>
 
     <dependency>
@@ -244,6 +245,16 @@
                 <path>
                   <groupId>org.projectlombok</groupId>
                   <artifactId>lombok</artifactId>
+                </path>
+                <path>
+                  <groupId>com.querydsl</groupId>
+                  <artifactId>querydsl-apt</artifactId>
+                  <version>${querydsl.version}</version>
+                  <classifier>jakarta</classifier>
+                </path>
+                <path>
+                  <groupId>jakarta.persistence</groupId>
+                  <artifactId>jakarta.persistence-api</artifactId>
                 </path>
               </annotationProcessorPaths>
             </configuration>

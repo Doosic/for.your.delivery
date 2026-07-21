@@ -131,7 +131,7 @@ function ProductDetailPage() {
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => navigate('/app/agent')}
+              onClick={() => navigate('/app/briefing')}
               className="flex h-12 flex-1 items-center justify-center rounded-md border border-slate-300 bg-white text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
             >
               AI 타이밍 판단

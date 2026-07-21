@@ -20,14 +20,16 @@ public class ExperienceController extends BaseController {
         "summary", "재고와 연결된 일정을 기준으로 오늘 살 상품과 기다릴 상품을 나눴어요.",
         "sections", List.of(
             Map.of("title", "오늘 살 것", "items", List.of(
-                decision("세탁세제 리필 2.6L", "재고 D-3 · 최근 가격 하락", "BUY_NOW", "BUY NOW"),
-                decision("고양이 모래 6L x2", "예상 소진일 도달", "BUY_NOW", "BUY NOW")
+                decision("LOCAL-DETERGENT-1", "세탁세제 리필 2.6L", "재고 D-3 · 최근 가격 하락", "BUY_NOW", "BUY NOW"),
+                decision("LOCAL-NAVER-2", "고양이 모래 6L x2", "예상 소진일 도달", "BUY_NOW", "BUY NOW")
             )),
             Map.of("title", "기다릴 것", "items", List.of(
-                decision("고양이 사료 1.5kg", "재고 충분 · 다음 가격 확인 대기", "WAIT", "WAIT")
+                decision("LOCAL-NAVER-1", "고양이 사료 1.5kg", "재고 충분 · 다음 가격 확인 대기", "WAIT", "WAIT")
             )),
             Map.of("title", "일정 준비", "items", List.of(
-                decision("캠핑 준비물", "캘린더 일정 기준 구매 마감 D-2", "PLAN", "PLAN")
+                decision("LOCAL-CAMPING-GAS", "부탄가스 4개입", "캠핑 준비물 추천 · 구매 마감 D-2", "BUY_NOW", "BUY NOW"),
+                decision("LOCAL-CAMPING-ICE", "아이스팩 대형", "캠핑 준비물 추천 · 재고 없음", "BUY_NOW", "BUY NOW"),
+                decision("LOCAL-CAMPING-CHARCOAL", "화로용 숯 3kg", "캠핑 준비물 추천 · 가격 확인 대기", "WAIT", "WAIT")
             ))
         ),
         "traceId", "brief-demo-v1"
@@ -44,9 +46,9 @@ public class ExperienceController extends BaseController {
             Map.of("label", "일정 준비", "value", "Google Calendar 연결 상태 반영")
         ),
         "decisions", List.of(
-            decision("세탁세제 리필 2.6L", "재고 D-3 · 구매 권장", "BUY_NOW", "BUY NOW"),
-            decision("고양이 사료 1.5kg", "다음 가격 확인까지 대기", "WAIT", "WAIT"),
-            decision("물티슈 캡형 10팩", "재고 충분", "HOLD", "HOLD")
+            decision("LOCAL-DETERGENT-1", "세탁세제 리필 2.6L", "재고 D-3 · 구매 권장", "BUY_NOW", "BUY NOW"),
+            decision("LOCAL-NAVER-1", "고양이 사료 1.5kg", "다음 가격 확인까지 대기", "WAIT", "WAIT"),
+            decision("LOCAL-WIPES-1", "물티슈 캡형 10팩", "재고 충분", "HOLD", "HOLD")
         ),
         "traceId", "agent-demo-v1"
     ));
@@ -71,8 +73,14 @@ public class ExperienceController extends BaseController {
     ));
   }
 
-  private Map<String, String> decision(String name, String note, String decision, String label) {
-    return Map.of("name", name, "note", note, "decision", decision, "label", label);
+  private Map<String, String> decision(String productSq, String name, String note, String decision, String label) {
+    return Map.of(
+        "productSq", productSq,
+        "name", name,
+        "note", note,
+        "decision", decision,
+        "label", label
+    );
   }
 
   public record ChatRequest(String message) {

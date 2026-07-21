@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -48,8 +49,11 @@ public class ProductImageService {
       return cached;
     }
 
-    ProductEntity product = productRepository.findByProductKey("NAVER:" + providerCode)
-        .orElseThrow(() -> new APIException(DATA_NOT_EXIST));
+    Optional<ProductEntity> productOptional = productRepository.findByProductKey("NAVER:" + providerCode);
+    if (productOptional.isEmpty()) {
+      throw new APIException(DATA_NOT_EXIST);
+    }
+    ProductEntity product = productOptional.get();
     validateImageUrl(product.getImageUrl());
 
     byte[] source = RestClient.create()
