@@ -15,7 +15,9 @@ public final class ProductModels {
       String source,
       String imageUrl,
       String productUrl,
-      String providerCode
+      String providerCode,
+      List<String> categories,
+      ImageSources imageSources
   ) {
   }
 
@@ -25,15 +27,45 @@ public final class ProductModels {
       List<String> sources,
       List<String> warnings,
       List<String> keywordSuggestions,
+      List<String> categories,
       List<ProductItem> items
+  ) {
+  }
+
+  public record ProductFeedItem(
+      String productSq,
+      String name,
+      long price,
+      String mallName,
+      String source,
+      String imageUrl,
+      String productUrl,
+      String providerCode,
+      ImageSources imageSources,
+      int rank,
+      long lowestPrice30d,
+      boolean historicalLow,
+      String historyStatus,
+      String priceBasis,
+      long historySampleCount
+  ) {
+  }
+
+  public record ImageSources(
+      String card1x,
+      String card2x,
+      String detail,
+      String original
   ) {
   }
 
   public record HomeFeedResponse(
       boolean live,
       List<String> warnings,
-      List<ProductItem> hotProducts,
-      List<ProductItem> bestPriceDeals
+      boolean personalized,
+      List<String> interestKeywords,
+      List<ProductFeedItem> hotProducts,
+      List<ProductFeedItem> bestPriceDeals
   ) {
   }
 }

@@ -31,6 +31,7 @@ public class CProperties {
   @Data
   public static class Naver {
     private String clientId;
+    private String clientSecret;
   }
 
   @Data
