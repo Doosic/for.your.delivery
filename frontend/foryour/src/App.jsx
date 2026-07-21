@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AuthLayout from '@/layouts/AuthLayout.jsx'
 import MainLayout from '@/layouts/MainLayout.jsx'
-import CompletePage from '@/pages/CompletePage.jsx'
 import LoginPage from '@/pages/auth/LoginPage.jsx'
 import SignupPage from '@/pages/auth/SignupPage.jsx'
 import HomePage from '@/pages/home/HomePage.jsx'
@@ -36,7 +35,6 @@ function App() {
         <Route path="/app/login" element={<LoginPage />} />
         <Route path="/app/signup" element={<SignupPage />} />
       </Route>
-      <Route path="/app/complete" element={<CompletePage />} />
       <Route path="*" element={<Navigate to="/app/main" replace />} />
     </Routes>
   )

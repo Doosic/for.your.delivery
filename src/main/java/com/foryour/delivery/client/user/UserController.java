@@ -1,9 +1,6 @@
 package com.foryour.delivery.client.user;
 
-import com.foryour.delivery.client.user.bean.CryptoPublicKeyResponse;
-import com.foryour.delivery.client.user.bean.UserLoginVO;
-import com.foryour.delivery.client.user.bean.UserResponseVO;
-import com.foryour.delivery.client.user.bean.UserSignupRequest;
+import com.foryour.delivery.client.user.bean.*;
 import com.foryour.delivery.common.APIDataResponse;
 import com.foryour.delivery.common.APIErrorResponse;
 import com.foryour.delivery.common.BaseController;
@@ -36,6 +33,18 @@ public class UserController extends BaseController {
   private final BCryptPasswordEncoder bCryptPasswordEncoder;
   private final JwtTokenProvider jwtTokenProvider;
   private final CProperties cProperties;
+
+  @GetMapping("/wb/user/user-info")
+  public APIDataResponse<UserInfoResponseVO> getUserInfo(){
+    UserResponseVO userInfo = getSessionInfo();
+    UserInfoResponseVO userInfoResponseVO = new UserInfoResponseVO();
+    if(userInfo != null){
+      userInfoResponseVO.setEmail(userInfo.getEmail());
+      userInfoResponseVO.setName(userInfo.getName());
+      userInfoResponseVO.setStatus(userInfo.getStatus());
+    }
+    return APIDataResponse.of(userInfoResponseVO);
+  }
 
   @PostMapping("/wp/user/crypto-public-key")
   public APIDataResponse<CryptoPublicKeyResponse> cryptoPublicKey() {
