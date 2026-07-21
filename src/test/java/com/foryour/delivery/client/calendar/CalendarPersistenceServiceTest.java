@@ -112,7 +112,10 @@ class CalendarPersistenceServiceTest {
         productUrl,
         providerCode,
         List.of(),
-        new ImageSources(image, image, image, image)
+        new ImageSources(image, image, image, image),
+        "",
+        "",
+        "테스트 모기퇴치제 상품 설명"
     );
   }
 

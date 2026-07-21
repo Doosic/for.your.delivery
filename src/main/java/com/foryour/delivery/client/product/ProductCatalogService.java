@@ -76,6 +76,8 @@ public class ProductCatalogService {
     product.setProductKey(productKey);
     product.setName(item.name());
     product.setNormalizedName(normalizeName(item.name()));
+    product.setBrand(item.brand());
+    product.setMaker(item.maker());
     product.setCategoryPath(String.join(" > ", item.categories()));
     product.setImageUrl(item.imageSources() == null ? item.imageUrl() : item.imageSources().original());
     product.setStatus(ProductStatusCode.ACTIVE);

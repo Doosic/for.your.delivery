@@ -17,7 +17,10 @@ public final class ProductModels {
       String productUrl,
       String providerCode,
       List<String> categories,
-      ImageSources imageSources
+      ImageSources imageSources,
+      String brand,
+      String maker,
+      String description
   ) {
   }
 

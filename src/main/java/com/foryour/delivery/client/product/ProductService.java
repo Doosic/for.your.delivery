@@ -6,6 +6,7 @@ import com.foryour.delivery.domain.entity.PurchaseClickEntity;
 import com.foryour.delivery.domain.entity.WikiEntryEntity;
 import com.foryour.delivery.domain.enums.WikiEntryStatusCode;
 import com.foryour.delivery.domain.repository.PurchaseClickRepository;
+import com.foryour.delivery.domain.repository.ProductOfferRepository;
 import com.foryour.delivery.domain.repository.ProductRepository;
 import com.foryour.delivery.domain.repository.WikiEntryRepository;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,7 @@ public class ProductService {
   private final WikiEntryRepository wikiEntryRepository;
   private final PurchaseClickRepository purchaseClickRepository;
   private final ProductRepository productRepository;
+  private final ProductOfferRepository productOfferRepository;
   private final ProductImageService productImageService;
   private final Map<String, ProductItem> productCache = new ConcurrentHashMap<>();
 
@@ -202,7 +204,9 @@ public class ProductService {
       live = true;
       collectSafely(keyword, naverItems);
       for (int index = 0; index < naverItems.size(); index++) {
-        ProductFeedItem item = toInitialFeedItem(naverItems.get(index), index + 1);
+        ProductItem product = naverItems.get(index);
+        productCache.put(product.productSq(), product);
+        ProductFeedItem item = toInitialFeedItem(product, index + 1);
         merged.putIfAbsent(item.productSq(), item);
       }
     }
@@ -246,6 +250,8 @@ public class ProductService {
   public ProductItem detail(String productSq) {
     ProductItem cached = productCache.get(productSq);
     if (cached != null) return cached;
+    ProductItem stored = storedProduct(productSq);
+    if (stored != null) return stored;
     List<ProductItem> demoItems = demoProducts("추천");
     for (ProductItem item : demoItems) {
       if (item.productSq().equals(productSq)) {
@@ -253,6 +259,42 @@ public class ProductService {
       }
     }
     return demoItems.getFirst();
+  }
+
+  private ProductItem storedProduct(String productSq) {
+    int separator = productSq == null ? -1 : productSq.indexOf('-');
+    if (separator <= 0 || separator >= productSq.length() - 1) return null;
+
+    String provider = productSq.substring(0, separator).toUpperCase(Locale.ROOT);
+    String providerCode = productSq.substring(separator + 1);
+    if (!isSupportedProvider(provider)) return null;
+
+    return productOfferRepository.findByProviderAndExternalProductId(provider, providerCode)
+        .flatMap(offer -> productRepository.findById(offer.getProductSq())
+            .map(product -> {
+              List<String> categories = categoryPath(product.getCategoryPath());
+              String imageUrl = stringValue(product.getImageUrl(), "");
+              return new ProductItem(
+                  productSq,
+                  product.getName(),
+                  offer.getPrice(),
+                  offer.getMallName(),
+                  provider,
+                  imageUrl,
+                  offer.getProductUrl(),
+                  providerCode,
+                  categories,
+                  imageSources(provider, providerCode, imageUrl),
+                  stringValue(product.getBrand(), ""),
+                  stringValue(product.getMaker(), ""),
+                  productDescription(
+                      categories,
+                      stringValue(product.getBrand(), ""),
+                      stringValue(product.getMaker(), ""),
+                      offer.getMallName())
+              );
+            }))
+        .orElse(null);
   }
 
   @SuppressWarnings("unchecked")
@@ -284,17 +326,26 @@ public class ProductService {
       for (Object raw : rawItems) {
         if (!(raw instanceof Map<?, ?> item)) continue;
         String id = stringValue(item.get("productId"), String.valueOf(items.size() + 1));
+        String name = cleanTitle(stringValue(item.get("title"), keyword));
+        String mallName = stringValue(item.get("mallName"), "네이버쇼핑");
+        String imageUrl = stringValue(item.get("image"), "");
+        String brand = stringValue(item.get("brand"), "");
+        String maker = stringValue(item.get("maker"), "");
+        List<String> categories = categoryValues(item);
         items.add(new ProductItem(
             "NAVER-" + id,
-            cleanTitle(stringValue(item.get("title"), keyword)),
+            name,
             longValue(item.get("lprice")),
-            stringValue(item.get("mallName"), "네이버쇼핑"),
+            mallName,
             "NAVER",
-            stringValue(item.get("image"), ""),
+            imageUrl,
             stringValue(item.get("link"), ""),
             id,
-            categoryValues(item),
-            imageSources("NAVER", id, stringValue(item.get("image"), ""))
+            categories,
+            imageSources("NAVER", id, imageUrl),
+            brand,
+            maker,
+            productDescription(categories, brand, maker, mallName)
         ));
       }
       return items;
@@ -341,17 +392,23 @@ public class ProductService {
         String cardImage = childText(product, "ProductImage200",
             childText(product, "ProductImage", ""));
         String largestImage = childText(product, "ProductImage300", cardImage);
+        String mallName = childText(product, "SellerNick", "11번가");
+        String brand = childText(product, "Brand", "");
+        String maker = childText(product, "Manufacturer", "");
         items.add(new ProductItem(
             "ELEVENST-" + id,
             childText(product, "ProductName", keyword),
             longValue(childText(product, "ProductPrice", "0")),
-            childText(product, "SellerNick", "11번가"),
+            mallName,
             "ELEVENST",
             largestImage,
             childText(product, "DetailPageUrl", ""),
             id,
             List.of(),
-            imageSources("ELEVENST", id, largestImage)
+            imageSources("ELEVENST", id, largestImage),
+            brand,
+            maker,
+            productDescription(List.of(), brand, maker, mallName)
         ));
       }
       return items;
@@ -363,11 +420,41 @@ public class ProductService {
 
   private List<ProductItem> demoProducts(String keyword) {
     return List.of(
-        new ProductItem("DEMO-1", keyword + " 인기 상품", 28900, "통합 상품 검색", "DEMO", "", "https://search.shopping.naver.com/search/all?query=" + keyword, "SERVER_DEMO", List.of(), new ImageSources("", "", "", "")),
-        new ProductItem("DEMO-2", keyword + " 실속형", 19800, "통합 상품 검색", "DEMO", "", "https://search.11st.co.kr/Search.tmall?kwd=" + keyword, "SERVER_DEMO", List.of(), new ImageSources("", "", "", "")),
-        new ProductItem("DEMO-3", keyword + " 무료배송", 32500, "통합 상품 검색", "DEMO", "", "https://search.shopping.naver.com/search/all?query=" + keyword, "SERVER_DEMO", List.of(), new ImageSources("", "", "", "")),
-        new ProductItem("DEMO-4", keyword + " 대용량", 41900, "통합 상품 검색", "DEMO", "", "https://search.11st.co.kr/Search.tmall?kwd=" + keyword, "SERVER_DEMO", List.of(), new ImageSources("", "", "", ""))
+        demoProduct("DEMO-1", keyword + " 인기 상품", 28900, "https://search.shopping.naver.com/search/all?query=" + keyword),
+        demoProduct("DEMO-2", keyword + " 실속형", 19800, "https://search.11st.co.kr/Search.tmall?kwd=" + keyword),
+        demoProduct("DEMO-3", keyword + " 무료배송", 32500, "https://search.shopping.naver.com/search/all?query=" + keyword),
+        demoProduct("DEMO-4", keyword + " 대용량", 41900, "https://search.11st.co.kr/Search.tmall?kwd=" + keyword)
     );
+  }
+
+  private ProductItem demoProduct(String productSq, String name, long price, String productUrl) {
+    return new ProductItem(
+        productSq, name, price, "통합 상품 검색", "DEMO", "", productUrl,
+        "SERVER_DEMO", List.of(), new ImageSources("", "", "", ""), "", "",
+        "판매처에서 제공하는 상품 정보를 준비하고 있습니다."
+    );
+  }
+
+  private List<String> categoryPath(String value) {
+    if (!StringUtils.hasText(value)) return List.of();
+    return List.of(value.split("\\s*>\\s*"));
+  }
+
+  private String productDescription(
+      List<String> categories,
+      String brand,
+      String maker,
+      String mallName
+  ) {
+    String category = categories.isEmpty() ? "상품" : categories.getLast();
+    String owner = StringUtils.hasText(brand) ? brand : maker;
+    String subject = StringUtils.hasText(owner) ? owner + "의 " + category : category;
+    return subject + " 상품입니다. " + stringValue(mallName, "판매처")
+        + "에서 제공한 상품명과 분류 정보를 기준으로 정리했으며, 옵션과 배송 조건은 구매 전에 확인해 주세요.";
+  }
+
+  private boolean isSupportedProvider(String provider) {
+    return "NAVER".equals(provider) || "ELEVENST".equals(provider);
   }
 
   private List<String> categoryValues(Map<?, ?> item) {

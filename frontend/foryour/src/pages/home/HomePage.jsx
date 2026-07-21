@@ -1,4 +1,4 @@
-import { ArrowRight, Flame, Sparkles, TrendingDown } from 'lucide-react'
+import { ArrowRight, Flame, Search, Sparkles, TrendingDown } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { homeService } from '@/services/homeService.js'
@@ -37,13 +37,13 @@ function HomePage() {
   return (
     <div className="space-y-6">
       {/* 검색바 */}
-      <button
-        type="button"
-        onClick={() => navigate('/app/search')}
-        className="flex h-12 w-full items-center rounded-lg border border-slate-300 bg-white px-4 text-left text-sm text-slate-400 shadow-sm transition hover:border-cyan-500"
+      <Link
+        to="/app/search"
+        className="flex h-12 w-full items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-400 shadow-sm transition hover:border-cyan-500 hover:text-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-100"
       >
+        <Search size={17} aria-hidden="true" />
         검색어를 입력하세요
-      </button>
+      </Link>
 
       <section>
         {isLoggedIn ? (

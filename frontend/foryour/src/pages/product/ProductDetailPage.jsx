@@ -1,4 +1,4 @@
-import { ChevronLeft, ExternalLink } from 'lucide-react'
+import { Building2, ChevronLeft, ExternalLink, FileText, Tags } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { productService } from '@/services/productService.js'
@@ -26,6 +26,9 @@ function ProductDetailPage() {
   }
 
   const detailImageUrl = product.imageSources?.detail || product.imageUrl
+  const categoryLabel = product.categories?.join(' · ') || '상품'
+  const description = product.description?.trim()
+    || `${categoryLabel} 상품입니다. 판매처에서 제공한 상품명과 분류 정보를 기준으로 정리했으며, 옵션과 배송 조건은 구매 전에 확인해 주세요.`
 
   const handleBuy = () => {
     const opened = productService.openSeller(product, { isLoggedIn, sourceContext: 'OTHER' })
@@ -74,7 +77,7 @@ function ProductDetailPage() {
             <ul className="mt-4 space-y-2">
               {[
                 ['판매처', product.mallName],
-                ['카테고리', product.categories?.join(' · ') || '상품'],
+                ['카테고리', categoryLabel],
               ].map(([label, value]) => (
                 <li key={label} className="flex items-center justify-between gap-4 text-sm">
                   <span className="text-slate-500">{label}</span>
@@ -82,6 +85,35 @@ function ProductDetailPage() {
                 </li>
               ))}
             </ul>
+
+            <div className="mt-5 border-t border-slate-100 pt-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <FileText size={16} className="text-cyan-700" aria-hidden="true" /> 상품 정보 요약
+                </h2>
+                <span className="text-xs font-medium text-slate-400">판매처 제공 정보 기준</span>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+
+              {(product.brand || product.maker) && (
+                <dl className="mt-4 grid gap-2 bg-slate-50 p-3 text-sm sm:grid-cols-2">
+                  {product.brand && (
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Tags size={15} className="shrink-0 text-slate-400" aria-hidden="true" />
+                      <dt className="shrink-0 text-slate-500">브랜드</dt>
+                      <dd className="truncate font-semibold text-slate-800">{product.brand}</dd>
+                    </div>
+                  )}
+                  {product.maker && (
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Building2 size={15} className="shrink-0 text-slate-400" aria-hidden="true" />
+                      <dt className="shrink-0 text-slate-500">제조사</dt>
+                      <dd className="truncate font-semibold text-slate-800">{product.maker}</dd>
+                    </div>
+                  )}
+                </dl>
+              )}
+            </div>
           </div>
         </div>
 

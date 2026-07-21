@@ -71,7 +71,10 @@ class ProductPurchaseServiceTest {
         productUrl,
         providerCode,
         List.of(),
-        new ImageSources(image, image, image, image)
+        new ImageSources(image, image, image, image),
+        "",
+        "",
+        "테스트 생필품 상품 설명"
     );
   }
 

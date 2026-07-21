@@ -70,6 +70,10 @@ function MainLayout() {
   }, [isLoggedIn, location.pathname, navigate, status])
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 })
+  }, [location.pathname])
+
+  useEffect(() => {
     if (!isUserMenuOpen) return undefined
 
     const closeOnOutsideClick = (event) => {

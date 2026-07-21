@@ -3,10 +3,12 @@ package com.foryour.delivery.client.product;
 import com.foryour.delivery.client.product.ProductModels.ImageSources;
 import com.foryour.delivery.client.product.ProductModels.ProductFeedItem;
 import com.foryour.delivery.client.product.ProductModels.ProductItem;
+import com.foryour.delivery.domain.entity.ProductEntity;
 import com.foryour.delivery.domain.entity.ProductOfferEntity;
 import com.foryour.delivery.domain.entity.ProductPriceHistoryEntity;
 import com.foryour.delivery.domain.repository.ProductOfferRepository;
 import com.foryour.delivery.domain.repository.ProductPriceHistoryRepository;
+import com.foryour.delivery.domain.repository.ProductRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -31,6 +33,9 @@ class ProductCatalogServiceTest {
   @Autowired
   private ProductPriceHistoryRepository productPriceHistoryRepository;
 
+  @Autowired
+  private ProductRepository productRepository;
+
   @Test
   void startsWithNaverLowestPriceAndMarksHistoricalLowAfterTwoSamples() {
     String providerCode = "catalog-test-" + UUID.randomUUID();
@@ -43,6 +48,10 @@ class ProductCatalogServiceTest {
     assertThat(first.historyStatus()).isEqualTo("COLLECTING");
     assertThat(first.historySampleCount()).isEqualTo(1);
     assertThat(first.historicalLow()).isFalse();
+
+    ProductEntity product = productRepository.findByProductKey("NAVER:" + providerCode).orElseThrow();
+    assertThat(product.getBrand()).isEqualTo("테스트 브랜드");
+    assertThat(product.getMaker()).isEqualTo("테스트 제조사");
 
     ProductOfferEntity offer = productOfferRepository
         .findByProviderAndExternalProductId("NAVER", providerCode)
@@ -75,7 +84,10 @@ class ProductCatalogServiceTest {
         "https://search.shopping.naver.com/catalog/" + providerCode,
         providerCode,
         List.of("생활/건강", "생활용품"),
-        new ImageSources("/card-1x", "/card-2x", "/detail", original)
+        new ImageSources("/card-1x", "/card-2x", "/detail", original),
+        "테스트 브랜드",
+        "테스트 제조사",
+        "생활용품 상품 설명"
     );
   }
 }

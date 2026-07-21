@@ -40,13 +40,18 @@ export const productService = {
 
   async detail(productSq) {
     const selected = productService.getSelectedProduct(productSq)
-    if (selected) {
+    try {
+      const response = await api.GET(`/delivery/wp/products/${productSq}`)
+      const product = assertSuccessBody(response, response.msg || 'fail').product
+      if (!isLiveProduct(product)) return selected
+      return {
+        ...selected,
+        ...product,
+        imageSources: product.imageSources ?? selected?.imageSources,
+      }
+    } catch {
       return selected
     }
-
-    const response = await api.GET(`/delivery/wp/products/${productSq}`)
-    const product = assertSuccessBody(response, response.msg || 'fail').product
-    return isLiveProduct(product) ? product : null
   },
 
   openSeller(product, { isLoggedIn = false, sourceContext = 'OTHER' } = {}) {
