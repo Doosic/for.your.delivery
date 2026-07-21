@@ -12,6 +12,19 @@ import ImportListPage from '@/pages/imports/ImportListPage.jsx'
 import ConnectionsPage from '@/pages/imports/ConnectionsPage.jsx'
 import CalendarPage from '@/pages/calendar/CalendarPage.jsx'
 import MyPage from '@/pages/my/MyPage.jsx'
+import { useAuth } from '@/shared/hooks/useAuth.jsx'
+
+function RequireAuth({ children }) {
+  const { status, isLoggedIn } = useAuth()
+
+  if (status === 'loading' || status === 'idle') return null
+
+  if (!isLoggedIn) {
+    return <Navigate to="/app/main" replace />
+  }
+
+  return children
+}
 
 function App() {
   return (
@@ -28,7 +41,14 @@ function App() {
         <Route path="/app/imports" element={<ImportListPage />} />
         <Route path="/app/imports/connections" element={<ConnectionsPage />} />
         <Route path="/app/calendar" element={<CalendarPage />} />
-        <Route path="/app/my" element={<MyPage />} />
+        <Route
+          path="/app/my"
+          element={(
+            <RequireAuth>
+              <MyPage />
+            </RequireAuth>
+          )}
+        />
       </Route>
 
       {/* 기존 인증 플로우 유지 (회원가입은 전체 화면 페이지) */}
