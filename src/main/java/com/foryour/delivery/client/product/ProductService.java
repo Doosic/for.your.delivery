@@ -1,6 +1,9 @@
 package com.foryour.delivery.client.product;
 
 import com.foryour.delivery.common.CProperties;
+import com.foryour.delivery.domain.entity.WikiEntryEntity;
+import com.foryour.delivery.domain.enums.WikiEntryStatusCode;
+import com.foryour.delivery.domain.repository.WikiEntryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,13 +20,18 @@ import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import static com.foryour.delivery.client.product.ProductModels.ProductItem;
+import static com.foryour.delivery.client.product.ProductModels.ProductFeedItem;
+import static com.foryour.delivery.client.product.ProductModels.ImageSources;
 import static com.foryour.delivery.client.product.ProductModels.HomeFeedResponse;
 import static com.foryour.delivery.client.product.ProductModels.SearchResponse;
 
@@ -33,14 +41,16 @@ import static com.foryour.delivery.client.product.ProductModels.SearchResponse;
 public class ProductService {
 
   private static final List<String> KEYWORDS = List.of(
-      "고양이 사료", "고양이 간식", "고양이 모래", "세탁세제", "캠핑 준비물", "생일 선물"
+      "생활용품", "식품", "반려동물", "스포츠/레저", "디지털", "가구/인테리어"
   );
 
   private final CProperties properties;
+  private final ProductCatalogService productCatalogService;
+  private final WikiEntryRepository wikiEntryRepository;
   private final Map<String, ProductItem> productCache = new ConcurrentHashMap<>();
 
   public SearchResponse search(String query, int requestedSize) {
-    String keyword = StringUtils.hasText(query) ? query.trim() : "고양이 사료";
+    String keyword = StringUtils.hasText(query) ? query.trim() : "생활용품";
     int size = Math.max(1, Math.min(requestedSize, 40));
 
     CompletableFuture<List<ProductItem>> naverFuture = CompletableFuture
@@ -55,6 +65,7 @@ public class ProductService {
     CompletableFuture.allOf(naverFuture, elevenFuture).join();
     List<ProductItem> naverItems = naverFuture.join();
     List<ProductItem> elevenItems = elevenFuture.join();
+    collectSafely(naverItems);
     List<String> sources = new ArrayList<>();
     if (!naverItems.isEmpty()) sources.add("NAVER");
     if (!elevenItems.isEmpty()) sources.add("ELEVENST");
@@ -76,21 +87,63 @@ public class ProductService {
     if (!live) {
       warnings.add("외부 상품 API가 연결되지 않아 서버 데모 데이터를 표시합니다.");
     }
-    return new SearchResponse(keyword, live, sources, warnings, KEYWORDS, items);
+    List<String> categories = naverItems.stream()
+        .flatMap(item -> item.categories().stream())
+        .filter(StringUtils::hasText)
+        .distinct()
+        .limit(20)
+        .toList();
+    List<String> keywordSuggestions = categories.isEmpty() ? KEYWORDS : categories;
+    return new SearchResponse(keyword, live, sources, warnings, keywordSuggestions, categories, items);
   }
 
   public HomeFeedResponse homeFeed() {
-    SearchResponse response = search("고양이 사료", 8);
-    List<ProductItem> items = response.items() == null ? List.of() : response.items();
-    List<ProductItem> hotProducts = items.stream()
-        .limit(4)
-        .toList();
-    List<ProductItem> bestPriceDeals = items.stream()
-        .sorted(Comparator.comparingLong(ProductItem::price))
-        .limit(3)
-        .toList();
+    return homeFeed(null);
+  }
 
-    return new HomeFeedResponse(response.live(), response.warnings(), hotProducts, bestPriceDeals);
+  public HomeFeedResponse homeFeed(Long userSq) {
+    List<String> keywords = interestKeywords(userSq);
+    LinkedHashMap<String, ProductFeedItem> merged = new LinkedHashMap<>();
+    List<String> warnings = new ArrayList<>();
+    boolean live = false;
+
+    for (String keyword : keywords) {
+      List<ProductItem> naverItems = searchNaver(keyword, 10);
+      if (naverItems.isEmpty()) {
+        warnings.add("네이버 상품 검색 결과를 불러오지 못했습니다: " + keyword);
+        continue;
+      }
+      live = true;
+      productCatalogService.collectAndEnrich(naverItems)
+          .forEach(item -> merged.putIfAbsent(item.productSq(), item));
+    }
+
+    if (!live) {
+      List<ProductItem> demoItems = demoProducts(keywords.getFirst());
+      for (int index = 0; index < demoItems.size(); index++) {
+        ProductFeedItem item = toInitialFeedItem(demoItems.get(index), index + 1);
+        merged.put(item.productSq(), item);
+      }
+      warnings.add("네이버 상품 API가 연결되지 않아 서버 데모 데이터를 표시합니다.");
+    }
+
+    List<ProductFeedItem> rankedItems = new ArrayList<>(merged.values());
+    List<ProductFeedItem> hotProducts = rankedItems.stream().limit(4).toList();
+    List<ProductFeedItem> bestPriceDeals = selectBestPriceDeals(rankedItems);
+    return new HomeFeedResponse(
+        live,
+        warnings,
+        userSq != null,
+        keywords,
+        hotProducts,
+        bestPriceDeals
+    );
+  }
+
+  public void collectDefaultPriceHistory() {
+    for (String keyword : KEYWORDS) {
+      collectSafely(searchNaver(keyword, 10));
+    }
   }
 
   public ProductItem detail(String productSq) {
@@ -105,7 +158,7 @@ public class ProductService {
   @SuppressWarnings("unchecked")
   private List<ProductItem> searchNaver(String keyword, int size) {
     CProperties.Naver config = properties.getExternal().getNaver();
-    if (!StringUtils.hasText(config.getClientId())) {
+    if (!StringUtils.hasText(config.getClientId()) || !StringUtils.hasText(config.getClientSecret())) {
       return List.of();
     }
 
@@ -119,6 +172,7 @@ public class ProductService {
               .queryParam("exclude", "used:cbshop")
           .build())
           .header("X-Naver-Client-Id", config.getClientId())
+          .header("X-Naver-Client-Secret", config.getClientSecret())
           .retrieve()
           .body(Map.class);
       if (response == null || !(response.get("items") instanceof List<?> rawItems)) return List.of();
@@ -135,7 +189,9 @@ public class ProductService {
             "NAVER",
             stringValue(item.get("image"), ""),
             stringValue(item.get("link"), ""),
-            id
+            id,
+            categoryValues(item),
+            imageSources("NAVER", id, stringValue(item.get("image"), ""))
         ));
       }
       return items;
@@ -176,15 +232,20 @@ public class ProductService {
       for (int index = 0; index < nodes.getLength(); index++) {
         Element product = (Element) nodes.item(index);
         String id = childText(product, "ProductCode", String.valueOf(index + 1));
+        String cardImage = childText(product, "ProductImage200",
+            childText(product, "ProductImage", ""));
+        String largestImage = childText(product, "ProductImage300", cardImage);
         items.add(new ProductItem(
             "ELEVENST-" + id,
             childText(product, "ProductName", keyword),
             longValue(childText(product, "ProductPrice", "0")),
             childText(product, "SellerNick", "11번가"),
             "ELEVENST",
-            childText(product, "ProductImage", ""),
+            largestImage,
             childText(product, "DetailPageUrl", ""),
-            id
+            id,
+            List.of(),
+            new ImageSources(cardImage, largestImage, largestImage, largestImage)
         ));
       }
       return items;
@@ -196,11 +257,132 @@ public class ProductService {
 
   private List<ProductItem> demoProducts(String keyword) {
     return List.of(
-        new ProductItem("DEMO-1", keyword + " 인기 상품", 28900, "통합 상품 검색", "DEMO", "", "https://search.shopping.naver.com/search/all?query=" + keyword, "SERVER_DEMO"),
-        new ProductItem("DEMO-2", keyword + " 실속형", 19800, "통합 상품 검색", "DEMO", "", "https://search.11st.co.kr/Search.tmall?kwd=" + keyword, "SERVER_DEMO"),
-        new ProductItem("DEMO-3", keyword + " 무료배송", 32500, "통합 상품 검색", "DEMO", "", "https://search.shopping.naver.com/search/all?query=" + keyword, "SERVER_DEMO"),
-        new ProductItem("DEMO-4", keyword + " 대용량", 41900, "통합 상품 검색", "DEMO", "", "https://search.11st.co.kr/Search.tmall?kwd=" + keyword, "SERVER_DEMO")
+        new ProductItem("DEMO-1", keyword + " 인기 상품", 28900, "통합 상품 검색", "DEMO", "", "https://search.shopping.naver.com/search/all?query=" + keyword, "SERVER_DEMO", List.of(), new ImageSources("", "", "", "")),
+        new ProductItem("DEMO-2", keyword + " 실속형", 19800, "통합 상품 검색", "DEMO", "", "https://search.11st.co.kr/Search.tmall?kwd=" + keyword, "SERVER_DEMO", List.of(), new ImageSources("", "", "", "")),
+        new ProductItem("DEMO-3", keyword + " 무료배송", 32500, "통합 상품 검색", "DEMO", "", "https://search.shopping.naver.com/search/all?query=" + keyword, "SERVER_DEMO", List.of(), new ImageSources("", "", "", "")),
+        new ProductItem("DEMO-4", keyword + " 대용량", 41900, "통합 상품 검색", "DEMO", "", "https://search.11st.co.kr/Search.tmall?kwd=" + keyword, "SERVER_DEMO", List.of(), new ImageSources("", "", "", ""))
     );
+  }
+
+  private List<String> categoryValues(Map<?, ?> item) {
+    List<String> categories = new ArrayList<>();
+    for (String key : List.of("category1", "category2", "category3", "category4")) {
+      String category = stringValue(item.get(key), "");
+      if (StringUtils.hasText(category)) {
+        categories.add(category);
+      }
+    }
+    return List.copyOf(categories);
+  }
+
+  private ImageSources imageSources(String source, String providerCode, String original) {
+    if (!"NAVER".equals(source) || !providerCode.matches("[A-Za-z0-9_-]+")) {
+      return new ImageSources(original, original, original, original);
+    }
+    String base = "/delivery/wp/product-images/" + providerCode;
+    return new ImageSources(
+        base + "?width=320",
+        base + "?width=640",
+        base + "?width=960",
+        original
+    );
+  }
+
+  private void collectSafely(List<ProductItem> items) {
+    if (items == null || items.isEmpty()) {
+      return;
+    }
+    try {
+      productCatalogService.collectAndEnrich(items);
+    } catch (Exception error) {
+      log.warn("Product price persistence failed: {}", error.getMessage());
+    }
+  }
+
+  private List<ProductFeedItem> selectBestPriceDeals(List<ProductFeedItem> items) {
+    List<ProductFeedItem> selected = new ArrayList<>(items.stream()
+        .filter(ProductFeedItem::historicalLow)
+        .sorted(Comparator.comparingInt(ProductFeedItem::rank))
+        .limit(3)
+        .toList());
+    if (selected.size() < 3) {
+      Set<String> selectedIds = selected.stream()
+          .map(ProductFeedItem::productSq)
+          .collect(java.util.stream.Collectors.toSet());
+      items.stream()
+          .filter(item -> !selectedIds.contains(item.productSq()))
+          .sorted(Comparator.comparingLong(ProductFeedItem::price))
+          .limit(3 - selected.size())
+          .forEach(selected::add);
+    }
+    return selected;
+  }
+
+  private ProductFeedItem toInitialFeedItem(ProductItem item, int rank) {
+    return new ProductFeedItem(
+        item.productSq(),
+        item.name(),
+        item.price(),
+        item.mallName(),
+        item.source(),
+        item.imageUrl(),
+        item.productUrl(),
+        item.providerCode(),
+        item.imageSources(),
+        rank,
+        item.price(),
+        false,
+        "COLLECTING",
+        "NAVER_LPRICE",
+        0
+    );
+  }
+
+  private List<String> interestKeywords(Long userSq) {
+    if (userSq == null) {
+      return List.of("생활용품");
+    }
+
+    List<WikiEntryEntity> entries = wikiEntryRepository
+        .findAllByUserSqAndStatusOrderByModifiedDateDesc(userSq, WikiEntryStatusCode.ACTIVE);
+    LinkedHashSet<String> keywords = new LinkedHashSet<>();
+    for (WikiEntryEntity entry : entries) {
+      String context = (entry.getEntryKey() + " " + entry.getSummary() + " " + entry.getContentJson())
+          .toUpperCase(Locale.ROOT);
+      addInterestKeywords(context, keywords);
+      if (keywords.size() >= 3) {
+        break;
+      }
+    }
+    if (keywords.isEmpty()) {
+      keywords.add("생활용품");
+    }
+    return keywords.stream().limit(3).toList();
+  }
+
+  private void addInterestKeywords(String context, Set<String> keywords) {
+    if (context.contains("CAT") || context.contains("고양이")) {
+      keywords.add("고양이 사료");
+      keywords.add("고양이 모래");
+    }
+    if (context.contains("DOG") || context.contains("강아지")) {
+      keywords.add("강아지 사료");
+    }
+    if (context.contains("PET_FOOD") || context.contains("반려동물 사료")) {
+      keywords.add("반려동물 사료");
+    }
+    if (context.contains("PET_SUPPLY") || context.contains("반려동물 용품")) {
+      keywords.add("반려동물 용품");
+    }
+    if (context.contains("HOUSEHOLD") || context.contains("생활용품")) {
+      keywords.add("생활용품");
+    }
+    if (context.contains("CAMPING") || context.contains("캠핑")) {
+      keywords.add("캠핑 용품");
+    }
+    if (context.contains("BABY") || context.contains("육아")) {
+      keywords.add("유아 용품");
+    }
   }
 
   private String cleanTitle(String value) {

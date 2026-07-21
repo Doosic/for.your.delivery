@@ -41,6 +41,10 @@ public class APIExceptionHandler extends ResponseEntityExceptionHandler {
 
     } else if(e.getMessage().equals(UNAUTHORIZED_FAIL.getMessage())){
       return handleExceptionInternal(e, UNAUTHORIZED_FAIL, request);
+    } else if(e.getMessage().equals(BAD_REQUEST.getMessage())){
+      return handleExceptionInternal(e, BAD_REQUEST, request);
+    } else if(e.getMessage().equals(ACCESS_DENIED.getMessage())){
+      return handleExceptionInternal(e, ACCESS_DENIED, request);
     }
 
     return handleExceptionInternal(e, INTERNAL_ERROR, request);
@@ -59,6 +63,10 @@ public class APIExceptionHandler extends ResponseEntityExceptionHandler {
 
     } else if(e.getMessage().equals(UNAUTHORIZED_FAIL.getMessage())){
       return handleExceptionInternal(e, UNAUTHORIZED_FAIL, request);
+    } else if(e.getMessage().equals(BAD_REQUEST.getMessage())){
+      return handleExceptionInternal(e, BAD_REQUEST, request);
+    } else if(e.getMessage().equals(ACCESS_DENIED.getMessage())){
+      return handleExceptionInternal(e, ACCESS_DENIED, request);
     }
 
     return handleExceptionInternal(e, INTERNAL_ERROR, request);
