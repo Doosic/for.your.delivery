@@ -59,7 +59,10 @@ api.interceptors.response.use(
     return Promise.resolve(data)
   },
   (error) => {
-    if (error.status === 401 || error.response?.status === 401) {
+    const requestUrl = error.config?.url ?? ''
+    const isUnauthorized = error.status === 401 || error.response?.status === 401
+
+    if (isUnauthorized && requestUrl.includes('/wb/')) {
       alert('로그인 세션이 종료되었습니다.')
       const cp = window.location.pathname.startsWith('/delivery') ? localStorage.getItem('delivery-contextpath') || '/delivery' : ''
       location.href = `${cp}/app/login`
