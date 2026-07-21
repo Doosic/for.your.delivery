@@ -105,7 +105,7 @@ public class ProductService {
   @SuppressWarnings("unchecked")
   private List<ProductItem> searchNaver(String keyword, int size) {
     CProperties.Naver config = properties.getExternal().getNaver();
-    if (!StringUtils.hasText(config.getClientId()) || !StringUtils.hasText(config.getClientSecret())) {
+    if (!StringUtils.hasText(config.getClientId())) {
       return List.of();
     }
 
@@ -117,9 +117,8 @@ public class ProductService {
               .queryParam("display", size)
               .queryParam("sort", "sim")
               .queryParam("exclude", "used:cbshop")
-              .build())
+          .build())
           .header("X-Naver-Client-Id", config.getClientId())
-          .header("X-Naver-Client-Secret", config.getClientSecret())
           .retrieve()
           .body(Map.class);
       if (response == null || !(response.get("items") instanceof List<?> rawItems)) return List.of();
