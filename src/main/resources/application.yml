@@ -1,0 +1,52 @@
+server:
+  port: 8920
+  title: for.your.delivery
+  version: '@project.version@'
+  servlet:
+    context-path: /delivery
+
+spring:
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: false
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    show-sql: true
+  servlet:
+    multipart:
+      max-file-size: 1024MB
+      max-request-size: 1024MB
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://172.30.1.85:5432/rag
+    username: admin
+    password: admin
+    hikari:
+      connectionTimeout: 20000
+      maximumPoolSize: 10
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+
+logging:
+  level:
+    root: info
+    org.springframework: error
+
+for:
+  your:
+    delivery:
+      jwt:
+        accessHeader: DeliveryAuthAccess
+        refreshHeader: DeliveryAuthRefresh
+        accessTimeoutMin: 1000
+        refreshTimeoutMin: 2000
+        secret: PF1ASAN3poeGDs1aoQzXZtYXVzamRwcnBya3JoZGxUZGpkbmZsZ2thUnBna3Nhb2R0cGRubGRwYWhlbXNyamZyamZ0bmRsVGRqZ2xhZW1zdGxya3NlbWZkbHdsYWtzc2tzZG50ZG1mdG5kbFRkamRqc3dwUmt3bHNrc2tmbWZhbGVyaHRrZmtkZ2tmdG5zb3JrZGxUd2tzZ2RrCg
+      kakaoMap:
+        appKey: 0cfac42557573261c0982e1383b077f5
+      content-root-path: //172.30.1.85/vod/fut/content
+      content-root-url: http://172.30.1.85/vod/fut/content
