@@ -20,14 +20,14 @@ function App() {
       {/* 쇼핑몰 메인 — 로그인 강제 없음, 전 화면 게스트 접근 가능 */}
       <Route path="/" element={<MainLayout />}>
         <Route index element={<HomePage />} />
-        <Route path="search" element={<SearchPage />} />
-        <Route path="products/:productSq" element={<ProductDetailPage />} />
-        <Route path="briefing" element={<BriefingPage />} />
-        <Route path="agent" element={<AgentShoppingPage />} />
-        <Route path="chat" element={<ChatPage />} />
-        <Route path="imports" element={<ImportListPage />} />
-        <Route path="imports/connections" element={<ConnectionsPage />} />
-        <Route path="calendar" element={<CalendarPage />} />
+        <Route path="/app/search" element={<SearchPage />} />
+        <Route path="/app/products/:productSq" element={<ProductDetailPage />} />
+        <Route path="/app/briefing" element={<BriefingPage />} />
+        <Route path="/app/agent" element={<AgentShoppingPage />} />
+        <Route path="/app/chat" element={<ChatPage />} />
+        <Route path="/app/imports" element={<ImportListPage />} />
+        <Route path="/app/imports/connections" element={<ConnectionsPage />} />
+        <Route path="/app/calendar" element={<CalendarPage />} />
       </Route>
 
       {/* 기존 인증 플로우 유지 (회원가입은 전체 화면 페이지) */}
@@ -35,7 +35,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
       </Route>
-      <Route path="/complete" element={<CompletePage />} />
+      <Route path="/app/complete" element={<CompletePage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
