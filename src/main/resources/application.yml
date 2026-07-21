@@ -19,7 +19,6 @@ spring:
               - openid
               - profile
               - email
-              - https://www.googleapis.com/auth/calendar.events.readonly
             redirect-uri: ${GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
         provider:
           google:
@@ -67,6 +66,9 @@ delivery:
     max-output-tokens: 600
     connect-timeout-ms: 3000
     read-timeout-ms: 15000
+
+  google-calendar:
+    redirect-uri: ${GOOGLE_CALENDAR_REDIRECT_URI=https://codegate.shop/delivery/wp/calendar/google/callback}
 
   external:
     naver:

@@ -73,7 +73,7 @@ function CalendarPage() {
           className="flex h-10 items-center justify-center gap-2 rounded-md bg-cyan-700 px-4 text-sm font-semibold text-white transition hover:bg-cyan-800 disabled:opacity-50"
         >
           {connected ? <RefreshCw size={15} className={isSyncing ? 'animate-spin' : ''} aria-hidden="true" /> : <LinkIcon size={15} aria-hidden="true" />}
-          {connected ? (isSyncing ? '동기화 중...' : '일정 다시 분석') : 'Google로 연결'}
+          {connected ? (isSyncing ? '동기화 중...' : '일정 다시 분석') : 'Calendar 연결'}
         </button>
       </header>
 
@@ -92,7 +92,7 @@ function CalendarPage() {
 
       {!isLoggedIn && (
         <section className="rounded-lg border border-cyan-200 bg-cyan-50 p-4 text-sm leading-6 text-slate-600">
-          로그인을 완료하면 Google OAuth 동의 화면으로 이동하고, 읽기 권한으로 일정 제목·시간·위치만 가져옵니다.
+          FUB 로그인 후 Google Calendar 읽기 권한만 연결합니다. Google 계정 정보로 FUB에 로그인하거나 새 회원을 만들지 않습니다.
         </section>
       )}
 

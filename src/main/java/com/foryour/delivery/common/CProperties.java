@@ -13,6 +13,7 @@ public class CProperties {
   private String frontendBaseUrl;
   private External external = new External();
   private OpenAi openai = new OpenAi();
+  private GoogleCalendar googleCalendar = new GoogleCalendar();
 
   @Data
   public static class Jwt {
@@ -49,5 +50,10 @@ public class CProperties {
     private Integer maxOutputTokens;
     private Integer connectTimeoutMs;
     private Integer readTimeoutMs;
+  }
+
+  @Data
+  public static class GoogleCalendar {
+    private String redirectUri;
   }
 }

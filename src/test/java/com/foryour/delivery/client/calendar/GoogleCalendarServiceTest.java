@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GoogleCalendarServiceTest {
 
   private final GoogleCalendarService service = new GoogleCalendarService(
-      null, null, null, new PersonalDataMasker());
+      null, null, null, null, new PersonalDataMasker());
 
   @Test
   void extractsPreparationKeywordsByCalendarContext() {

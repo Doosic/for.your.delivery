@@ -2,7 +2,6 @@ package com.foryour.delivery.config.jwt;
 
 import com.foryour.delivery.client.user.UserServiceImpl;
 import com.foryour.delivery.client.user.bean.UserResponseVO;
-import com.foryour.delivery.common.APIErrorResponse;
 import com.foryour.delivery.common.CProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -10,19 +9,14 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
-import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.*;
-
-import static com.foryour.delivery.domain.enums.ErrorCode.UNAUTHORIZED_FAIL;
 
 
 @Component
@@ -40,8 +34,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
       "/app/**",
       "/resources/**",
       "/oauth2/**",
-      "/error",
-      "/wp/**"
+      "/error"
   ));
 
   @Override
@@ -53,7 +46,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
     if(request.getCookies() == null){
-      this.unathorizedFail(response);
+      filterChain.doFilter(request, response);
       return;
     }
 
@@ -68,7 +61,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         .orElse(null);
 
     if(accessToken == null && refreshToken == null){
-      this.unathorizedFail(response);
+      filterChain.doFilter(request, response);
       return;
     }
 
@@ -118,15 +111,5 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     }
 
     filterChain.doFilter(request, response);
-  }
-
-
-  private void unathorizedFail(HttpServletResponse response){
-    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-    try (PrintWriter writer = response.getWriter()) {
-      writer.write(new ObjectMapper().writeValueAsString(APIErrorResponse.of(false, UNAUTHORIZED_FAIL.getCode(), UNAUTHORIZED_FAIL.getMessage())));
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
   }
 }

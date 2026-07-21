@@ -13,6 +13,8 @@ import com.foryour.delivery.domain.entity.CalendarItemSuggestionEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -40,6 +42,7 @@ public class GoogleCalendarService {
   private static final int MAX_ANALYZED_EVENTS = 20;
 
   private final OAuth2AuthorizedClientService authorizedClientService;
+  private final OAuth2AuthorizedClientManager authorizedClientManager;
   private final CalendarPersistenceService calendarPersistenceService;
   private final ProductService productService;
   private final PersonalDataMasker personalDataMasker;
@@ -51,12 +54,18 @@ public class GoogleCalendarService {
       LocalDate to,
       List<String> calendarIds
   ) {
-    OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient("google", email);
-    if (client == null) {
+    OAuth2AuthorizedClient storedClient = authorizedClientService.loadAuthorizedClient("google", email);
+    if (storedClient == null) {
       return storedOrDemo(userSq, from, to, false, false, "Google Calendar 연결이 필요합니다.");
     }
 
     try {
+      OAuth2AuthorizedClient refreshedClient = authorizedClientManager.authorize(
+          OAuth2AuthorizeRequest.withClientRegistrationId("google")
+              .principal(email)
+              .build()
+      );
+      OAuth2AuthorizedClient client = refreshedClient == null ? storedClient : refreshedClient;
       List<CalendarEventInput> fetched = new ArrayList<>();
       for (String calendarId : calendarIds) {
         fetched.addAll(fetchCalendar(client, calendarId, from, to));

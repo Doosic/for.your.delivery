@@ -1,10 +1,13 @@
 package com.foryour.delivery.client.imports;
 
+import com.foryour.delivery.client.calendar.GoogleCalendarAuthorizationService;
 import com.foryour.delivery.client.calendar.GoogleCalendarService;
 import com.foryour.delivery.client.member.MemberFeatureService;
 import com.foryour.delivery.client.user.bean.UserResponseVO;
 import com.foryour.delivery.common.APIDataResponse;
 import com.foryour.delivery.common.BaseController;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ImportController extends BaseController {
 
   private final GoogleCalendarService googleCalendarService;
+  private final GoogleCalendarAuthorizationService googleCalendarAuthorizationService;
   private final MemberFeatureService memberFeatureService;
   private final Map<Long, Set<Long>> committedItems = new ConcurrentHashMap<>();
 
@@ -34,7 +39,7 @@ public class ImportController extends BaseController {
         "connections", List.of(
         connection(1, "GOOGLE_CALENDAR", "Google Calendar",
             googleConnected ? "연결됨 · 일정 읽기 권한 사용 중" : "일정에서 준비물과 구매 마감일 추출",
-            googleConnected, googleConnected ? "필요할 때 동기화" : null, googleConnected ? null : "Google 계정 연결"),
+            googleConnected, googleConnected ? "필요할 때 동기화" : null, googleConnected ? null : "Calendar 권한 연결"),
         connection(2, "GMAIL", "Gmail 주문메일", "Gmail 권한 키 연결 후 주문확인 메일 수집", false, null, "연결 준비 중"),
         connection(3, "CODEF", "구매내역 API", "CODEF Connected ID 연동을 위한 서버 설정 대기", false, null, "API 키 필요"),
         connection(4, "FILE", "파일 업로드", "주문내역 CSV 또는 엑셀 업로드", false, null, "파일 선택")
@@ -42,12 +47,16 @@ public class ImportController extends BaseController {
   }
 
   @PostMapping("/wp/import-connections/oauth/start")
-  public APIDataResponse<Map<String, Object>> oauthStart(@RequestBody OAuthStartRequest request) {
-    getSessionInfo();
+  public APIDataResponse<Map<String, Object>> oauthStart(
+      @RequestBody OAuthStartRequest request,
+      HttpServletRequest servletRequest
+  ) {
+    UserResponseVO user = getSessionInfo();
     if ("GOOGLE_CALENDAR".equalsIgnoreCase(request.source())) {
       return APIDataResponse.of(Map.of(
           "source", "GOOGLE_CALENDAR",
-          "authorizationUrl", "/delivery/oauth2/authorization/google",
+          "authorizationUrl", googleCalendarAuthorizationService.authorizationUrl(
+              user.getEmail(), servletRequest),
           "connected", false
       ));
     }
@@ -56,6 +65,17 @@ public class ImportController extends BaseController {
         "connected", false,
         "requiresConfiguration", true
     ));
+  }
+
+  @GetMapping("/wp/calendar/google/callback")
+  public void googleCalendarCallback(
+      @RequestParam(required = false) String code,
+      @RequestParam(required = false) String state,
+      @RequestParam(required = false) String error,
+      HttpServletRequest request,
+      HttpServletResponse response
+  ) throws IOException {
+    response.sendRedirect(googleCalendarAuthorizationService.complete(code, state, error, request));
   }
 
   @PostMapping("/wp/imports/sync")
