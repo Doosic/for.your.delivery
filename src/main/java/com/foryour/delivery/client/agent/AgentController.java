@@ -2,6 +2,7 @@ package com.foryour.delivery.client.agent;
 
 import com.foryour.delivery.client.agent.AgentService.AgentSessionView;
 import com.foryour.delivery.client.agent.AgentService.AgentMessageResult;
+import com.foryour.delivery.client.agent.AgentBriefingHarness.BriefingView;
 import com.foryour.delivery.common.APIDataResponse;
 import com.foryour.delivery.common.BaseController;
 import jakarta.validation.Valid;
@@ -21,6 +22,12 @@ import java.util.Map;
 public class AgentController extends BaseController {
 
   private final AgentService agentService;
+  private final AgentBriefingHarness agentBriefingHarness;
+
+  @GetMapping("/wb/agent/briefing/today")
+  public APIDataResponse<BriefingView> todayBriefing() {
+    return APIDataResponse.of(agentBriefingHarness.today(getSessionInfo().getUserSq()));
+  }
 
   @PostMapping("/wb/agent/sessions")
   public APIDataResponse<AgentSessionView> createSession(

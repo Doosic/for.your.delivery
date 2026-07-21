@@ -11,6 +11,7 @@ import ChatPage from '@/pages/chat/ChatPage.jsx'
 import ImportListPage from '@/pages/imports/ImportListPage.jsx'
 import ConnectionsPage from '@/pages/imports/ConnectionsPage.jsx'
 import CalendarPage from '@/pages/calendar/CalendarPage.jsx'
+import MyPage from '@/pages/my/MyPage.jsx'
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="/app/imports" element={<ImportListPage />} />
         <Route path="/app/imports/connections" element={<ConnectionsPage />} />
         <Route path="/app/calendar" element={<CalendarPage />} />
+        <Route path="/app/my" element={<MyPage />} />
       </Route>
 
       {/* 기존 인증 플로우 유지 (회원가입은 전체 화면 페이지) */}

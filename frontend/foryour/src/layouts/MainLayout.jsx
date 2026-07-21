@@ -1,4 +1,4 @@
-import { CalendarDays, Home, Import, LogOut, Search, Sparkles } from 'lucide-react'
+import { CalendarDays, Home, Import, LogOut, Search, Sparkles, UserRound } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import BrandLogo from '@/components/BrandLogo.jsx'
@@ -18,6 +18,7 @@ const LOGIN_REQUIRED_MESSAGE = '로그인 후 사용할 수 있는 메뉴입니�
 const PROTECTED_PATHS = NAV_ITEMS
   .filter((item) => item.requiresAuth)
   .map((item) => item.to)
+  .concat('/app/my')
 
 const isProtectedPath = (pathname) => (
   PROTECTED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
@@ -87,7 +88,15 @@ function MainLayout() {
           <div className="flex items-center gap-2">
             {isLoggedIn ? (
               <>
-                <span className="text-sm font-medium text-slate-700">{user?.name}님</span>
+                <Link
+                  to="/app/my"
+                  className="flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-slate-700 transition hover:bg-cyan-50 hover:text-cyan-800"
+                  aria-label="마이페이지"
+                  title="마이페이지"
+                >
+                  <UserRound size={16} aria-hidden="true" />
+                  <span className="hidden sm:inline">{user?.name}님</span>
+                </Link>
                 <button
                   type="button"
                   onClick={handleLogout}

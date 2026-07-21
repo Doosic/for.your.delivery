@@ -54,6 +54,13 @@ export const agentService = {
         text: result.assistantMessage?.text ?? '요청을 확인했어요.',
         sourceAgent: result.assistantMessage?.sourceAgent,
       }
+      const harnessItems = result.assistantMessage?.payload?.recommendations ?? []
+      if (harnessItems.length) {
+        return {
+          ...body,
+          card: { title: '일정·가격 분석 추천', items: harnessItems.slice(0, 6) },
+        }
+      }
       try {
         const products = await productService.search({ query: message, size: 4 })
         const items = (products.items ?? []).map((product) => ({

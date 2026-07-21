@@ -1,4 +1,4 @@
-import { ExternalLink, SendHorizontal } from 'lucide-react';
+import { CalendarClock, ExternalLink, SendHorizontal, TrendingDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { agentService } from '@/services/agentService.js';
@@ -11,6 +11,7 @@ const BADGE_CLASS = {
   WAIT: 'bg-amber-50 text-amber-600',
   HOLD: 'bg-slate-100 text-slate-400',
   PLAN: 'bg-cyan-50 text-cyan-700',
+  BUY_BY: 'bg-blue-50 text-blue-700',
 };
 
 const EMPTY_BRIEFING = {
@@ -22,6 +23,7 @@ const EMPTY_BRIEFING = {
 function ProductRecommendation({ item, isLoggedIn, showDecision = false }) {
   const imageUrl = item.imageSources?.card1x || item.imageUrl;
   const image2x = item.imageSources?.card2x;
+  const insight = item.priceInsight;
 
   return (
     <li className='flex items-center gap-2 rounded-md transition hover:bg-slate-50'>
@@ -54,6 +56,35 @@ function ProductRecommendation({ item, isLoggedIn, showDecision = false }) {
               {item.label}
             </span>
           )}
+          {item.note && (
+            <p className='mt-1 line-clamp-2 text-xs leading-5 text-slate-500'>{item.note}</p>
+          )}
+          <div className='mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500'>
+            {item.recommendedBuyBy && (
+              <span className='inline-flex items-center gap-1'>
+                <CalendarClock size={12} aria-hidden='true' />
+                {item.recommendedBuyBy}까지 주문
+              </span>
+            )}
+            {insight?.historicalLow && (
+              <span className='inline-flex items-center gap-1 font-semibold text-emerald-700'>
+                <TrendingDown size={12} aria-hidden='true' />
+                최근 {insight.windowDays}일 최저가
+              </span>
+            )}
+            {insight?.nearHistoricalLow && !insight.historicalLow && (
+              <span className='inline-flex items-center gap-1 font-semibold text-emerald-700'>
+                <TrendingDown size={12} aria-hidden='true' />
+                {insight.windowDays}일 최저가 근접
+              </span>
+            )}
+            {insight?.expectedOptimalDate && !insight.historicalLow && (
+              <span className='inline-flex items-center gap-1 text-amber-700'>
+                <TrendingDown size={12} aria-hidden='true' />
+                {insight.expectedOptimalDate} 가격 재확인
+              </span>
+            )}
+          </div>
         </div>
       </Link>
       {item.productUrl && (
@@ -118,12 +149,16 @@ function ChatPage() {
                   className='rounded-lg border border-slate-200 bg-white p-4 shadow-sm'
                 >
                   <h2 className='text-sm font-semibold'>{section.title}</h2>
+                  {section.subtitle && (
+                    <p className='mt-1 text-xs leading-5 text-slate-500'>{section.subtitle}</p>
+                  )}
                   <ul className='mt-3 space-y-3'>
                     {section.items.map((item) => (
                       <ProductRecommendation
                         key={item.productSq}
                         item={item}
                         isLoggedIn={isLoggedIn}
+                        showDecision
                       />
                     ))}
                   </ul>

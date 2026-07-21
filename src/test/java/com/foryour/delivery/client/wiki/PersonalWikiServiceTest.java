@@ -8,15 +8,18 @@ import com.foryour.delivery.domain.enums.UserStatusCode;
 import com.foryour.delivery.domain.enums.WikiEntryStatusCode;
 import com.foryour.delivery.domain.repository.UserRepository;
 import com.foryour.delivery.domain.repository.WikiEntryHistoryRepository;
+import com.foryour.delivery.exception.APIException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
@@ -81,6 +84,31 @@ class PersonalWikiServiceTest {
     assertThat(personalWikiService.wiki(
         user.getUserSq(), WikiEntryStatusCode.ACTIVE, "PET", "고양이").entries()).hasSize(1);
     assertThat(wikiEntryHistoryRepository.count()).isEqualTo(historyCount + 2);
+  }
+
+  @Test
+  void updatesAndArchivesOnlyOwnedWikiEntry() {
+    UserEntity owner = createUser();
+    UserEntity other = createUser();
+    long historyCount = wikiEntryHistoryRepository.count();
+    WikiEntryView created = personalWikiService.createExplicit(
+        owner.getUserSq(), "HOBBY", "CUSTOM_TEST", "캠핑을 좋아해", Map.of("note", "캠핑"));
+
+    assertThatThrownBy(() -> personalWikiService.updateExplicit(
+        other.getUserSq(), created.wikiEntrySq(), "FOOD", "한식을 좋아해", Map.of()))
+        .isInstanceOf(APIException.class);
+
+    WikiEntryView updated = personalWikiService.updateExplicit(
+        owner.getUserSq(), created.wikiEntrySq(), "FOOD", "한식을 좋아해", Map.of("note", "한식"));
+    WikiEntryView archived = personalWikiService.archive(owner.getUserSq(), created.wikiEntrySq());
+
+    assertThat(updated.category()).isEqualTo("FOOD");
+    assertThat(updated.version()).isEqualTo(2);
+    assertThat(archived.status()).isEqualTo("ARCHIVED");
+    assertThat(archived.version()).isEqualTo(3);
+    assertThat(personalWikiService.wiki(
+        owner.getUserSq(), WikiEntryStatusCode.ACTIVE, null, null).entries()).isEmpty();
+    assertThat(wikiEntryHistoryRepository.count()).isEqualTo(historyCount + 3);
   }
 
   private UserEntity createUser() {

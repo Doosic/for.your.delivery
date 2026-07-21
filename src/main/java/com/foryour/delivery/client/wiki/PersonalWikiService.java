@@ -89,7 +89,7 @@ public class PersonalWikiService {
       entry.setVersion(entry.getVersion() + 1);
     }
     entry.setSummary(maskedSummary);
-    entry.setContentJson(personalDataMasker.mask(content));
+    entry.setContentJson(personalDataMasker.mask(content == null ? Map.of() : content));
     entry.setSourceType("USER");
     entry.setSourceRefSq(null);
     entry.setConfidence(BigDecimal.ONE);
@@ -99,6 +99,39 @@ public class PersonalWikiService {
     entry = wikiEntryRepository.save(entry);
     saveHistory(entry, "USER", created ? "EXPLICIT_CREATE" : "EXPLICIT_UPDATE");
 
+    return toView(entry);
+  }
+
+  @Transactional
+  public WikiEntryView updateExplicit(
+      Long userSq,
+      Long wikiEntrySq,
+      String category,
+      String summary,
+      Map<String, Object> content
+  ) {
+    WikiEntryEntity entry = ownedEntry(userSq, wikiEntrySq);
+    rejectRestricted(summary);
+    entry.setCategory(normalizeRequired(category));
+    entry.setSummary(personalDataMasker.mask(summary.trim()));
+    entry.setContentJson(personalDataMasker.mask(content == null ? Map.of() : content));
+    entry.setSourceType("USER");
+    entry.setSourceRefSq(null);
+    entry.setConfidence(BigDecimal.ONE);
+    entry.setStatus(WikiEntryStatusCode.ACTIVE);
+    entry.setVersion(entry.getVersion() + 1);
+    entry = wikiEntryRepository.save(entry);
+    saveHistory(entry, "USER", "EXPLICIT_UPDATE");
+    return toView(entry);
+  }
+
+  @Transactional
+  public WikiEntryView archive(Long userSq, Long wikiEntrySq) {
+    WikiEntryEntity entry = ownedEntry(userSq, wikiEntrySq);
+    entry.setStatus(WikiEntryStatusCode.ARCHIVED);
+    entry.setVersion(entry.getVersion() + 1);
+    entry = wikiEntryRepository.save(entry);
+    saveHistory(entry, "USER", "ARCHIVED");
     return toView(entry);
   }
 
@@ -242,6 +275,11 @@ public class PersonalWikiService {
     entry = wikiEntryRepository.save(entry);
     saveHistory(entry, "PERSONAL_WIKI", "CHAT_PROPOSAL");
     return entry;
+  }
+
+  private WikiEntryEntity ownedEntry(Long userSq, Long wikiEntrySq) {
+    return wikiEntryRepository.findByWikiEntrySqAndUserSq(wikiEntrySq, userSq)
+        .orElseThrow(() -> new APIException(DATA_NOT_EXIST));
   }
 
   private void saveHistory(WikiEntryEntity entry, String changedBy, String reason) {

@@ -1,6 +1,7 @@
 package com.foryour.delivery.client.agent;
 
 import com.foryour.delivery.client.wiki.PersonalWikiService;
+import com.foryour.delivery.client.agent.AgentBriefingHarness.AgentContext;
 import com.foryour.delivery.client.wiki.PersonalWikiService.WikiAgentReply;
 import com.foryour.delivery.client.wiki.PersonalWikiService.WikiEntryView;
 import com.foryour.delivery.common.PersonalDataMasker;
@@ -47,6 +48,7 @@ public class AgentService {
   private final PersonalWikiService personalWikiService;
   private final PersonalDataMasker personalDataMasker;
   private final OpenAiAgentClient openAiAgentClient;
+  private final AgentBriefingHarness agentBriefingHarness;
 
   @Transactional
   public AgentSessionView createSession(Long userSq, String title, Map<String, Object> context) {
@@ -197,10 +199,17 @@ public class AgentService {
     if (containsAny(normalized, "위키", "기억해", "기억해줘", "내 정보", "내 취향", "remember")) {
       return AgentTypeCode.PERSONAL_WIKI;
     }
-    if (containsAny(normalized, "가격", "최저가", "할인", "가격하락", "price")) {
+    boolean priceIntent = containsAny(
+        normalized, "가격", "최저가", "최적가", "할인", "가격하락", "구매 시점", "언제 주문", "언제 사", "price");
+    boolean calendarIntent = containsAny(
+        normalized, "일정", "캘린더", "여행", "캠핑", "행사", "calendar");
+    if (priceIntent && calendarIntent) {
+      return AgentTypeCode.BRIEFING_SHOPPING;
+    }
+    if (priceIntent) {
       return AgentTypeCode.PRICE_INTELLIGENCE;
     }
-    if (containsAny(normalized, "일정", "캘린더", "여행", "캠핑", "calendar")) {
+    if (calendarIntent) {
       return AgentTypeCode.CALENDAR_PREPARATION;
     }
     if (containsAny(normalized, "구매", "상품", "쇼핑", "추천", "브리핑", "사료", "간식", "모래", "용품")) {
@@ -218,7 +227,19 @@ public class AgentService {
     return false;
   }
 
-  private String responseText(AgentTypeCode route) {
+  private String responseText(AgentTypeCode route, AgentContext context) {
+    if (context != null && !context.recommendations().isEmpty()) {
+      int recommendationCount = context.recommendations().size();
+      return switch (route) {
+        case BRIEFING_SHOPPING -> "일정과 최근 30일 가격을 함께 비교해 "
+            + recommendationCount + "개 상품의 구매 시점을 정리했어요.";
+        case CALENDAR_PREPARATION -> "다가오는 일정에서 필요한 상품 "
+            + recommendationCount + "개와 구매 마감일을 정리했어요.";
+        case PRICE_INTELLIGENCE -> "최근 30일 가격 이력으로 "
+            + recommendationCount + "개 상품의 현재 가격과 다음 확인일을 비교했어요.";
+        default -> "요청을 확인했어요.";
+      };
+    }
     switch (route) {
       case BRIEFING_SHOPPING:
         return "쇼핑 요청을 확인했어요. 상품과 재고 데이터를 연결해 추천을 준비할게요.";
@@ -256,10 +277,19 @@ public class AgentService {
       return enhanceReply(route, text, sessionContext, requestContext, deterministicReply);
     }
 
+    AgentContext agentContext = agentBriefingHarness.contextFor(userSq, route, text);
+    if (agentContext == null) {
+      agentContext = AgentContext.empty();
+    }
     Map<String, Object> payload = new HashMap<>();
     payload.put("route", route.name());
     payload.put("status", "ACCEPTED");
-    payload.put("dataMode", "PENDING");
+    payload.put("dataMode", agentContext.dataMode());
+    payload.put("recommendations", agentContext.recommendations());
+    payload.put("evidencePolicy", agentContext.evidencePolicy());
+    if (agentContext.briefing() != null) {
+      payload.put("briefing", agentContext.briefing());
+    }
     List<Map<String, Object>> actions = new java.util.ArrayList<>();
     WikiEntryView candidate = personalWikiService.proposeImportantFact(userSq, messageSq, text);
     Long candidateSq = null;
@@ -271,12 +301,12 @@ public class AgentService {
     }
     deterministicReply = new AgentReply(
         AgentMessageTypeCode.TEXT,
-        responseText(route),
+        responseText(route, agentContext),
         payload,
         actions,
         candidateSq,
         "RULE_BASED",
-        "v1.1"
+        "v2.1"
     );
     return enhanceReply(route, text, sessionContext, requestContext, deterministicReply);
   }
@@ -294,7 +324,14 @@ public class AgentService {
     safeContext.put("requestContext", requestContext);
     safeContext.put("responseType", deterministicReply.messageType().name());
     safeContext.put("draftResponse", deterministicReply.text());
-    safeContext.put("resultSummary", personalDataMasker.mask(deterministicReply.payload().toString()));
+    Map<String, Object> resultSummary = new LinkedHashMap<>();
+    for (String key : List.of(
+        "route", "status", "dataMode", "recommendations", "evidencePolicy", "wikiCandidate")) {
+      if (deterministicReply.payload().containsKey(key)) {
+        resultSummary.put(key, deterministicReply.payload().get(key));
+      }
+    }
+    safeContext.put("resultSummary", personalDataMasker.mask(resultSummary));
 
     return openAiAgentClient.generate(route, personalDataMasker.mask(safeContext))
         .map(generated -> {
@@ -311,7 +348,7 @@ public class AgentService {
               deterministicReply.actions(),
               deterministicReply.candidateWikiEntrySq(),
               generated.model(),
-              "openai-v1"
+              "openai-briefing-v2.1"
           );
         })
         .orElseGet(() -> {
@@ -351,7 +388,7 @@ public class AgentService {
         "route", route.name()
     ));
     run.setModelName("RULE_BASED");
-    run.setPromptVersion("v1.1");
+    run.setPromptVersion("v2.1");
     run.setStartedAt(startedAt);
     run.setTraceId(traceId);
     return agentRunRepository.save(run);

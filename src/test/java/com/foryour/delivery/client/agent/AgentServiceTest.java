@@ -9,6 +9,7 @@ import com.foryour.delivery.domain.repository.AgentDecisionRepository;
 import com.foryour.delivery.domain.repository.AgentRunRepository;
 import com.foryour.delivery.exception.APIException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -43,6 +44,15 @@ class AgentServiceTest {
 
   @MockitoBean
   private OpenAiAgentClient openAiAgentClient;
+
+  @MockitoBean
+  private AgentBriefingHarness agentBriefingHarness;
+
+  @BeforeEach
+  void setUpHarness() {
+    given(agentBriefingHarness.contextFor(any(), any(), any()))
+        .willReturn(AgentBriefingHarness.AgentContext.empty());
+  }
 
   @Test
   void createsAndReadsUnifiedSessionForOwner() {
@@ -85,7 +95,7 @@ class AgentServiceTest {
     assertThat(result.assistantMessage().sourceAgent()).isEqualTo("CALENDAR_PREPARATION");
     assertThat(result.assistantMessage().payload())
         .containsEntry("route", "CALENDAR_PREPARATION")
-        .containsEntry("dataMode", "PENDING");
+        .containsEntry("dataMode", "NONE");
     assertThat(result.userMessage().traceId()).isEqualTo(result.assistantMessage().traceId());
     assertThat(found.messages()).hasSize(2);
     assertThat(found.lastMessageAt()).isNotNull();
@@ -150,6 +160,21 @@ class AgentServiceTest {
     assertThat(contextCaptor.getValue().toString())
         .contains("l***@gmail.com", "010-****-5678")
         .doesNotContain("lion4464@gmail.com", "010-1234-5678");
+  }
+
+  @Test
+  void routesCombinedCalendarAndPriceQuestionToUnifiedBriefing() {
+    UserEntity owner = createUser();
+    AgentSessionView session = agentService.createSession(owner.getUserSq(), null, null);
+
+    AgentService.AgentMessageResult result = agentService.sendMessage(
+        owner.getUserSq(),
+        session.sessionSq(),
+        "다음 캠핑 일정 준비물은 언제 주문해야 최저가일까?",
+        Map.of()
+    );
+
+    assertThat(result.assistantMessage().sourceAgent()).isEqualTo("BRIEFING_SHOPPING");
   }
 
   private UserEntity createUser() {

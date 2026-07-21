@@ -50,6 +50,26 @@ public class PersonalWikiController extends BaseController {
     ));
   }
 
+  @PostMapping("/wb/agent/wiki/entries/{wikiEntrySq}")
+  public APIDataResponse<WikiEntryView> updateEntry(
+      @PathVariable Long wikiEntrySq,
+      @Valid @RequestBody WikiEntryUpdateRequest request
+  ) {
+    return APIDataResponse.of(personalWikiService.updateExplicit(
+        getSessionInfo().getUserSq(),
+        wikiEntrySq,
+        request.category(),
+        request.summary(),
+        request.content()
+    ));
+  }
+
+  @PostMapping("/wb/agent/wiki/entries/{wikiEntrySq}/archive")
+  public APIDataResponse<WikiEntryView> archiveEntry(@PathVariable Long wikiEntrySq) {
+    return APIDataResponse.of(personalWikiService.archive(
+        getSessionInfo().getUserSq(), wikiEntrySq));
+  }
+
   @PostMapping("/wb/agent/wiki/onboarding")
   public APIDataResponse<WikiView> onboarding(
       @Valid @RequestBody WikiOnboardingRequest request
@@ -79,6 +99,13 @@ public class PersonalWikiController extends BaseController {
   public record WikiEntryCreateRequest(
       @NotBlank @Size(max = 30) String category,
       @NotBlank @Size(max = 100) String entryKey,
+      @NotBlank @Size(max = 500) String summary,
+      Map<String, Object> content
+  ) {
+  }
+
+  public record WikiEntryUpdateRequest(
+      @NotBlank @Size(max = 30) String category,
       @NotBlank @Size(max = 500) String summary,
       Map<String, Object> content
   ) {

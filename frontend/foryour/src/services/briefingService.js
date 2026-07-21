@@ -1,5 +1,4 @@
 import api from '@/shared/libs/api.js';
-import { productService } from '@/services/productService.js';
 import { assertSuccessBody } from '@/shared/libs/api-result.js';
 
 const EMPTY_BRIEFING = {
@@ -8,46 +7,18 @@ const EMPTY_BRIEFING = {
   live: false,
 };
 
-const recommendation = (product, decision, label, note) => ({
-  ...product,
-  decision,
-  label,
-  note,
-});
-
 export const briefingService = {
   async getToday() {
     try {
-      const response = await api.GET('/delivery/wb/home/feed', undefined, {
+      const response = await api.GET('/delivery/wb/agent/briefing/today', undefined, {
         skipUnauthorizedRedirect: true,
       });
       const body = assertSuccessBody(response, response.msg || 'fail');
-      const hotProducts = (body.hotProducts ?? []).filter(productService.isLiveProduct);
-      const bestPriceDeals = (body.bestPriceDeals ?? []).filter(productService.isLiveProduct);
-      const sections = [
-        {
-          title: '오늘 살펴볼 것',
-          items: hotProducts.slice(0, 3).map((product) =>
-            recommendation(product, 'PLAN', '추천', '현재 인기와 관심 정보를 반영한 상품'),
-          ),
-        },
-        {
-          title: '가격 기회',
-          items: bestPriceDeals.slice(0, 3).map((product) =>
-            recommendation(product, 'BUY_NOW', '가격 확인', '최근 수집 가격을 기준으로 확인할 상품'),
-          ),
-        },
-      ];
       return {
-        summary: sections.some((section) => section.items.length > 0)
-          ? body.hasPurchaseHistory
-            ? '최근 구매이력과 실제 판매 가격을 기준으로 다시 필요할 상품을 정리했어요.'
-            : '구매이력이 없어 개인 위키의 관심 정보로 첫 구매 추천을 준비했어요.'
-          : '현재 추천할 수 있는 실제 상품 데이터가 없어요.',
-        sections,
-        live: sections.some((section) => section.items.length > 0),
+        ...body,
+        sections: body.sections ?? [],
+        live: Boolean(body.live),
         recommendationBasis: body.recommendationBasis,
-        hasPurchaseHistory: Boolean(body.hasPurchaseHistory),
       };
     } catch {
       return EMPTY_BRIEFING;
