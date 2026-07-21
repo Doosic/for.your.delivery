@@ -28,7 +28,8 @@ const toProduct = (item, productSq) => ({
 });
 
 const resolveProductSq = (item, index) =>
-  item.productSq || `BRIEF-${index + 1}-${encodeURIComponent(item.name).slice(0, 40)}`;
+  item.productSq ||
+  `BRIEF-${index + 1}-${encodeURIComponent(item.name).slice(0, 40)}`;
 
 function ChatPage() {
   const { user, isLoggedIn } = useAuth();
@@ -104,22 +105,25 @@ function ChatPage() {
                             onClick={() => openProductDetail(item, productSq)}
                             className='flex cursor-pointer items-center gap-3 rounded-md transition hover:bg-slate-50'
                           >
-                            <div className='h-10 w-10 shrink-0 rounded-md bg-gradient-to-br from-slate-200 to-slate-50' />
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt=''
+                                className='h-10 w-10 shrink-0 rounded-md object-cover'
+                              />
+                            ) : (
+                              <div className='h-10 w-10 shrink-0 rounded-md bg-gradient-to-br from-slate-200 to-slate-50' />
+                            )}
                             <div className='min-w-0 flex-1'>
                               <p className='truncate text-sm font-medium'>
                                 {item.name}
                               </p>
                               <p className='truncate text-xs text-slate-500'>
-                                {item.note}
+                                {item.price > 0
+                                  ? `${Number(item.price).toLocaleString()}원 · ${item.mallName || item.source || ''}`
+                                  : item.note}
                               </p>
                             </div>
-                            <span
-                              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                BADGE_CLASS[item.decision] ?? BADGE_CLASS.PLAN
-                              }`}
-                            >
-                              {item.label}
-                            </span>
                           </Link>
                         </li>
                       );
