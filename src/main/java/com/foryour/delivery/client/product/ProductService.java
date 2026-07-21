@@ -3,6 +3,7 @@ package com.foryour.delivery.client.product;
 import com.foryour.delivery.common.CProperties;
 import com.foryour.delivery.domain.entity.WikiEntryEntity;
 import com.foryour.delivery.domain.enums.WikiEntryStatusCode;
+import com.foryour.delivery.domain.repository.PurchaseClickRepository;
 import com.foryour.delivery.domain.repository.WikiEntryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,11 +48,17 @@ public class ProductService {
   private final CProperties properties;
   private final ProductCatalogMessagePublisher productCatalogMessagePublisher;
   private final WikiEntryRepository wikiEntryRepository;
+  private final PurchaseClickRepository purchaseClickRepository;
   private final Map<String, ProductItem> productCache = new ConcurrentHashMap<>();
 
   public SearchResponse search(String query, int requestedSize) {
+    return search(query, requestedSize, "LOW_PRICE");
+  }
+
+  public SearchResponse search(String query, int requestedSize, String requestedSort) {
     String keyword = StringUtils.hasText(query) ? query.trim() : "생활용품";
     int size = Math.max(1, Math.min(requestedSize, 40));
+    SearchSort sort = SearchSort.from(requestedSort);
 
     List<ProductItem> naverItems = searchNaver(keyword, size);
     List<ProductItem> elevenItems = searchElevenst(keyword, size);
@@ -75,6 +82,7 @@ public class ProductService {
 
     boolean live = !merged.isEmpty();
     List<ProductItem> sourceItems = live ? new ArrayList<>(merged.values()) : demoProducts(keyword);
+    sortItems(sourceItems, sort);
     List<ProductItem> items = new ArrayList<>();
     for (ProductItem item : sourceItems) {
       if (items.size() >= size) {
@@ -104,8 +112,45 @@ public class ProductService {
         break;
       }
     }
-    List<String> keywordSuggestions = categories.isEmpty() ? KEYWORDS : categories;
+    LinkedHashSet<String> suggestions = new LinkedHashSet<>(KEYWORDS);
+    suggestions.addAll(categories);
+    List<String> keywordSuggestions = new ArrayList<>(suggestions);
     return new SearchResponse(keyword, live, sources, warnings, keywordSuggestions, categories, items);
+  }
+
+  private void sortItems(List<ProductItem> items, SearchSort sort) {
+    if (sort == SearchSort.POPULAR) {
+      return;
+    }
+    if (sort == SearchSort.LOW_PRICE) {
+      items.sort(Comparator.comparingLong(ProductItem::price));
+      return;
+    }
+    Map<String, Long> clickCounts = new ConcurrentHashMap<>();
+    items.sort(Comparator
+        .comparingLong((ProductItem item) -> clickCounts.computeIfAbsent(
+            item.source() + ":" + item.providerCode(),
+            ignored -> purchaseClickRepository.countByProviderAndExternalProductId(
+                item.source(), item.providerCode())))
+        .reversed()
+        .thenComparingLong(ProductItem::price));
+  }
+
+  private enum SearchSort {
+    LOW_PRICE,
+    POPULAR,
+    PURCHASE;
+
+    private static SearchSort from(String value) {
+      if (!StringUtils.hasText(value)) {
+        return LOW_PRICE;
+      }
+      try {
+        return SearchSort.valueOf(value.trim().toUpperCase(Locale.ROOT));
+      } catch (IllegalArgumentException ignored) {
+        return LOW_PRICE;
+      }
+    }
   }
 
   public HomeFeedResponse homeFeed() {

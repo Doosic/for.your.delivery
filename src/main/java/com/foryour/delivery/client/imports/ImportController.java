@@ -6,6 +6,10 @@ import com.foryour.delivery.client.member.MemberFeatureService;
 import com.foryour.delivery.client.user.bean.UserResponseVO;
 import com.foryour.delivery.common.APIDataResponse;
 import com.foryour.delivery.common.BaseController;
+import com.foryour.delivery.domain.entity.ProductEntity;
+import com.foryour.delivery.domain.entity.PurchaseClickEntity;
+import com.foryour.delivery.domain.repository.ProductRepository;
+import com.foryour.delivery.domain.repository.PurchaseClickRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,6 +34,8 @@ public class ImportController extends BaseController {
   private final GoogleCalendarService googleCalendarService;
   private final GoogleCalendarAuthorizationService googleCalendarAuthorizationService;
   private final MemberFeatureService memberFeatureService;
+  private final PurchaseClickRepository purchaseClickRepository;
+  private final ProductRepository productRepository;
   private final Map<Long, Set<Long>> committedItems = new ConcurrentHashMap<>();
 
   @GetMapping("/wp/import-connections")
@@ -78,12 +86,13 @@ public class ImportController extends BaseController {
 
   @PostMapping("/wp/imports/sync")
   public APIDataResponse<Map<String, Object>> sync(@RequestBody SyncRequest request) {
-    getSessionInfo();
+    Long userSq = getSessionInfo().getUserSq();
+    int purchaseCount = purchaseClickRepository.findAllByUserSqOrderByClickedAtDesc(userSq).size();
     return APIDataResponse.of(Map.of(
-        "importedCount", demoItems().size(),
-        "newCount", demoItems().size(),
+        "importedCount", purchaseCount,
+        "newCount", purchaseCount,
         "sources", request.sources() == null ? List.of() : request.sources(),
-        "live", false
+        "live", true
     ));
   }
 
@@ -95,15 +104,34 @@ public class ImportController extends BaseController {
   ) {
     Long userSq = getSessionInfo().getUserSq();
     Set<Long> committed = committedItems.getOrDefault(userSq, Set.of());
-    List<ImportedItem> items = demoItems().stream()
-        .filter(item -> !committed.contains(item.importedItemSq()))
-        .limit(Math.max(1, Math.min(size, 100)))
-        .toList();
+    List<PurchaseClickEntity> clicks = purchaseClickRepository.findAllByUserSqOrderByClickedAtDesc(userSq);
+    int safePage = Math.max(page, 0);
+    int safeSize = Math.max(1, Math.min(size, 100));
+    int fromIndex = Math.min(safePage * safeSize, clicks.size());
+    int toIndex = Math.min(fromIndex + safeSize, clicks.size());
+    List<ImportedItem> items = new ArrayList<>();
+    for (PurchaseClickEntity click : clicks.subList(fromIndex, toIndex)) {
+      if (committed.contains(click.getPurchaseClickSq())) {
+        continue;
+      }
+      ProductEntity product = productRepository.findById(click.getProductSq()).orElse(null);
+      items.add(new ImportedItem(
+          click.getPurchaseClickSq(),
+          product == null ? "구매 상품" : product.getName(),
+          1,
+          click.getPriceAtClick(),
+          click.getClickedAt().format(DateTimeFormatter.ISO_LOCAL_DATE),
+          click.getProvider(),
+          true,
+          product == null ? null : product.getImageUrl(),
+          click.getTargetUrl()
+      ));
+    }
     return APIDataResponse.of(Map.of(
         "items", items,
-        "page", Math.max(page, 0),
+        "page", safePage,
         "status", status,
-        "live", false
+        "live", true
     ));
   }
 
@@ -116,7 +144,7 @@ public class ImportController extends BaseController {
     return APIDataResponse.of(Map.of(
         "committedCount", itemSqs.size(),
         "inventoryItemSqs", inventoryItemSqs,
-        "live", false
+        "live", true
     ));
   }
 
@@ -140,15 +168,6 @@ public class ImportController extends BaseController {
     return value;
   }
 
-  private List<ImportedItem> demoItems() {
-    return List.of(
-        new ImportedItem(1L, "고양이 사료 오리진 1.5kg", 1, 32400, "2026-07-21", "GMAIL", true),
-        new ImportedItem(2L, "세탁세제 리필 2.6L", 1, 12900, "2026-07-20", "FILE", true),
-        new ImportedItem(3L, "우유 900ml x2", 2, 5600, "2026-07-19", "GMAIL", true),
-        new ImportedItem(4L, "물티슈 캡형 10팩", 1, 9900, "2026-07-18", "FILE", false)
-    );
-  }
-
   public record OAuthStartRequest(String source, String redirectUri) {
   }
 
@@ -165,7 +184,9 @@ public class ImportController extends BaseController {
       long price,
       String purchasedAt,
       String source,
-      boolean isNew
+      boolean isNew,
+      String imageUrl,
+      String productUrl
   ) {
   }
 }

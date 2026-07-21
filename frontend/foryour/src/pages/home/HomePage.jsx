@@ -1,4 +1,4 @@
-import { Flame, Sparkles, TrendingDown } from 'lucide-react'
+import { ArrowRight, Flame, Sparkles, TrendingDown } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { homeService } from '@/services/homeService.js'
@@ -19,7 +19,7 @@ function HomePage() {
   const [homeFeed, setHomeFeed] = useState(EMPTY_FEED)
 
   useEffect(() => {
-    homeService.getFeed()
+    homeService.getFeed({ personalized: isLoggedIn })
       .then((response) => {
         const live = Boolean(response.live)
         setHomeFeed({
@@ -30,7 +30,7 @@ function HomePage() {
         })
       })
       .catch(() => setHomeFeed(EMPTY_FEED))
-  }, [])
+  }, [isLoggedIn])
 
   const formatPrice = (value) => `${value.toLocaleString()}원`
 
@@ -45,11 +45,13 @@ function HomePage() {
         검색어를 입력하세요
       </button>
 
-      {/* 히어로: 게스트=서비스 소개 / 로그인=AI 브리핑 요약 */}
-      <section className="grid gap-4 md:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-lg bg-slate-950 p-6 text-white sm:p-8">
-          {isLoggedIn ? (
-            <>
+      <section>
+        {isLoggedIn ? (
+          <Link
+            to="/app/briefing"
+            className="group flex min-h-40 flex-col justify-between gap-6 rounded-lg bg-slate-950 p-6 text-white shadow-sm transition hover:bg-slate-900 sm:flex-row sm:items-end sm:p-8"
+          >
+            <div>
               <p className="flex items-center gap-1.5 text-sm font-semibold text-cyan-300">
                 <Sparkles size={15} aria-hidden="true" /> AI 브리핑
               </p>
@@ -59,15 +61,13 @@ function HomePage() {
               <p className="mt-2 text-sm leading-6 text-slate-300">
                 실제 가격과 판매처 정보를 기준으로 살 상품과 기다릴 상품을 정리해 드려요.
               </p>
-              <Link
-                to="/app/briefing"
-                className="mt-5 inline-flex h-10 items-center rounded-md bg-white px-4 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-50"
-              >
-                브리핑 전체 보기
-              </Link>
-            </>
-          ) : (
-            <>
+            </div>
+            <span className="flex h-10 shrink-0 items-center gap-2 self-start rounded-md bg-white px-4 text-sm font-semibold text-cyan-800 transition group-hover:bg-cyan-50 sm:self-auto">
+              브리핑 전체 보기 <ArrowRight size={16} aria-hidden="true" />
+            </span>
+          </Link>
+        ) : (
+          <div className="rounded-lg bg-slate-950 p-6 text-white sm:p-8">
               <h1 className="text-xl font-semibold leading-snug sm:text-2xl">
                 검색 전에, AI가 먼저 준비하는 쇼핑
               </h1>
@@ -90,25 +90,8 @@ function HomePage() {
                   로그인
                 </button>
               </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <div>
-            <h2 className="text-base font-semibold">AI 브리핑</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              오늘 살 것, 기다릴 것, 일정 준비를 대화로 이어서 확인할 수 있어요.
-            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => navigate('/app/briefing')}
-            className="mt-4 h-10 rounded-md border border-cyan-200 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50"
-          >
-            AI 브리핑 열기
-          </button>
-        </div>
+        )}
       </section>
 
       {/* 지금 핫한 상품 */}

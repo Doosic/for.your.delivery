@@ -39,9 +39,10 @@ public class ProductController extends BaseController {
   @GetMapping("/wp/products")
   public APIDataResponse<ProductModels.SearchResponse> search(
       @RequestParam(defaultValue = "생활용품") String query,
-      @RequestParam(defaultValue = "20") int size
+      @RequestParam(defaultValue = "20") int size,
+      @RequestParam(defaultValue = "LOW_PRICE") String sort
   ) {
-    return APIDataResponse.of(productService.search(query, size));
+    return APIDataResponse.of(productService.search(query, size, sort));
   }
 
   @GetMapping("/wp/products/{productSq}")

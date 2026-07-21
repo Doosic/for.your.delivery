@@ -60,6 +60,9 @@ public class PersonalWikiController extends BaseController {
         request.pets(),
         request.shoppingPriorities(),
         request.preferredCategories(),
+        request.favoriteFoods(),
+        request.cookingFrequency(),
+        request.hobbies(),
         request.prompt()
     ));
   }
@@ -89,6 +92,9 @@ public class PersonalWikiController extends BaseController {
       @Size(max = 10) List<@NotBlank @Size(max = 30) String> pets,
       @Size(max = 10) List<@NotBlank @Size(max = 40) String> shoppingPriorities,
       @Size(max = 20) List<@NotBlank @Size(max = 40) String> preferredCategories,
+      @Size(max = 10) List<@NotBlank @Size(max = 40) String> favoriteFoods,
+      @Size(max = 40) String cookingFrequency,
+      @Size(max = 10) List<@NotBlank @Size(max = 40) String> hobbies,
       @Size(max = 1000) String prompt
   ) {
   }

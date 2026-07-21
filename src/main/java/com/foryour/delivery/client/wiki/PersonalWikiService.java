@@ -109,6 +109,9 @@ public class PersonalWikiService {
       List<String> pets,
       List<String> shoppingPriorities,
       List<String> preferredCategories,
+      List<String> favoriteFoods,
+      String cookingFrequency,
+      List<String> hobbies,
       String prompt
   ) {
     if (householdSize != null) {
@@ -125,6 +128,19 @@ public class PersonalWikiService {
     if (preferredCategories != null && !preferredCategories.isEmpty()) {
       createExplicit(userSq, "SHOPPING", "PREFERRED_CATEGORIES", "선호 상품 카테고리",
           Map.of("categories", preferredCategories));
+    }
+    if (favoriteFoods != null && !favoriteFoods.isEmpty()) {
+      createExplicit(userSq, "FOOD", "FAVORITE_FOODS", "좋아하는 음식",
+          Map.of("foods", favoriteFoods));
+    }
+    if (cookingFrequency != null && !cookingFrequency.isBlank()) {
+      String frequency = cookingFrequency.trim();
+      createExplicit(userSq, "LIFESTYLE", "COOKING_FREQUENCY", "직접 요리 빈도: " + frequency,
+          Map.of("frequency", frequency));
+    }
+    if (hobbies != null && !hobbies.isEmpty()) {
+      createExplicit(userSq, "HOBBY", "HOBBIES", "취미 정보",
+          Map.of("hobbies", hobbies));
     }
     if (prompt != null && !prompt.isBlank()) {
       createExplicit(userSq, "PREFERENCE", "ONBOARDING_PROMPT", prompt, Map.of("prompt", prompt));

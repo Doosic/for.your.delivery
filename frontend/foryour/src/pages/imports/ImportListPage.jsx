@@ -1,4 +1,4 @@
-import { LogIn, Settings, Trash2 } from 'lucide-react'
+import { ExternalLink, LogIn, Settings, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 import { importService } from '@/services/importService.js'
@@ -93,6 +93,11 @@ function ImportListPage() {
                     checked={checked.has(item.importedItemSq)}
                     onChange={() => toggle(item.importedItemSq)}
                   />
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-md object-cover" />
+                  ) : (
+                    <div className="h-12 w-12 shrink-0 rounded-md bg-slate-100" />
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{item.name}</p>
                     <p className="text-xs text-slate-500">
@@ -100,6 +105,18 @@ function ImportListPage() {
                     </p>
                   </div>
                 </label>
+                {item.productUrl && (
+                  <a
+                    href={item.productUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-slate-300 text-slate-500 transition hover:border-cyan-300 hover:text-cyan-700"
+                    aria-label={`${item.name} 판매처 열기`}
+                    title="판매처 열기"
+                  >
+                    <ExternalLink size={14} aria-hidden="true" />
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={() => handleDelete(item.importedItemSq)}

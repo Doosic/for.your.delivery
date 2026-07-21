@@ -10,7 +10,7 @@ const isLiveProduct = (product) =>
   product.providerCode !== 'LOCAL_FALLBACK'
 
 export const productService = {
-  async search({ query = '', size = 20 }) {
+  async search({ query = '', size = 20, sort = 'LOW_PRICE' }) {
     const normalizedQuery = query.trim()
     if (!normalizedQuery) {
       return {
@@ -22,7 +22,7 @@ export const productService = {
       }
     }
 
-    const response = await api.GET('/delivery/wp/products', { query: normalizedQuery, size })
+    const response = await api.GET('/delivery/wp/products', { query: normalizedQuery, size, sort })
     const body = assertSuccessBody(response, response.msg || 'fail')
     const items = (body.items ?? []).filter(isLiveProduct)
     return {

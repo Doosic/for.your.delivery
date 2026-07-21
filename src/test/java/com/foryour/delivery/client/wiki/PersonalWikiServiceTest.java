@@ -42,17 +42,20 @@ class PersonalWikiServiceTest {
         List.of("CAT"),
         List.of("LOWEST_PRICE", "FAST_DELIVERY"),
         List.of("PET_FOOD"),
+        List.of("한식"),
+        "주 3~4회",
+        List.of("캠핑"),
         "연락 이메일은 lion4464@gmail.com 이고 무료배송을 선호해"
     );
 
-    assertThat(result.entries()).hasSize(5);
+    assertThat(result.entries()).hasSize(8);
     assertThat(result.entries()).allMatch(entry -> entry.status().equals("ACTIVE"));
     WikiEntryView prompt = result.entries().stream()
         .filter(entry -> entry.entryKey().equals("ONBOARDING_PROMPT"))
         .findFirst()
         .orElseThrow();
     assertThat(prompt.summary()).contains("l***@gmail.com").doesNotContain("lion4464@gmail.com");
-    assertThat(wikiEntryHistoryRepository.count()).isEqualTo(historyCount + 5);
+    assertThat(wikiEntryHistoryRepository.count()).isEqualTo(historyCount + 8);
   }
 
   @Test
