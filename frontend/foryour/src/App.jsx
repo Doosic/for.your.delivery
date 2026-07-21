@@ -7,8 +7,6 @@ import OAuthCompletePage from '@/pages/auth/OAuthCompletePage.jsx'
 import HomePage from '@/pages/home/HomePage.jsx'
 import SearchPage from '@/pages/search/SearchPage.jsx'
 import ProductDetailPage from '@/pages/product/ProductDetailPage.jsx'
-import BriefingPage from '@/pages/briefing/BriefingPage.jsx'
-import AgentShoppingPage from '@/pages/agent/AgentShoppingPage.jsx'
 import ChatPage from '@/pages/chat/ChatPage.jsx'
 import ImportListPage from '@/pages/imports/ImportListPage.jsx'
 import ConnectionsPage from '@/pages/imports/ConnectionsPage.jsx'
@@ -23,9 +21,9 @@ function App() {
         <Route path="/app/main" element={<HomePage />} />
         <Route path="/app/search" element={<SearchPage />} />
         <Route path="/app/products/:productSq" element={<ProductDetailPage />} />
-        <Route path="/app/briefing" element={<BriefingPage />} />
-        <Route path="/app/agent" element={<AgentShoppingPage />} />
-        <Route path="/app/chat" element={<ChatPage />} />
+        <Route path="/app/briefing" element={<ChatPage />} />
+        <Route path="/app/agent" element={<Navigate to="/app/briefing" replace />} />
+        <Route path="/app/chat" element={<Navigate to="/app/briefing" replace />} />
         <Route path="/app/imports" element={<ImportListPage />} />
         <Route path="/app/imports/connections" element={<ConnectionsPage />} />
         <Route path="/app/calendar" element={<CalendarPage />} />
