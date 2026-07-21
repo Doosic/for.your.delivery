@@ -248,14 +248,6 @@ export const importMock = {
       connected: false,
       action: '캘린더 연결',
     },
-    {
-      importConnectionSq: 5,
-      source: 'FILE',
-      label: '파일 업로드',
-      description: '주문내역 CSV/엑셀 직접 업로드',
-      connected: false,
-      action: '파일 선택',
-    },
   ],
 };
 

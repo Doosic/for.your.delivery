@@ -40,9 +40,7 @@ public class ImportController extends BaseController {
         connection(1, "GOOGLE_CALENDAR", "Google Calendar",
             googleConnected ? "연결됨 · 일정 읽기 권한 사용 중" : "일정에서 준비물과 구매 마감일 추출",
             googleConnected, googleConnected ? "필요할 때 동기화" : null, googleConnected ? null : "Calendar 권한 연결"),
-        connection(2, "GMAIL", "Gmail 주문메일", "Gmail 권한 키 연결 후 주문확인 메일 수집", false, null, "연결 준비 중"),
-        connection(3, "CODEF", "구매내역 API", "CODEF Connected ID 연동을 위한 서버 설정 대기", false, null, "API 키 필요"),
-        connection(4, "FILE", "파일 업로드", "주문내역 CSV 또는 엑셀 업로드", false, null, "파일 선택")
+        connection(2, "GMAIL", "Gmail 주문메일", "Gmail 권한 키 연결 후 주문확인 메일 수집", false, null, "연결 준비 중")
         )));
   }
 

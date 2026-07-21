@@ -12,18 +12,22 @@ const SOURCE_ICON_BG = {
   COUPANG: 'bg-rose-100',
   GMAIL: 'bg-orange-100',
   GOOGLE_CALENDAR: 'bg-emerald-100',
-  CODEF: 'bg-violet-100',
-  FILE: 'bg-cyan-100',
 }
+
+const HIDDEN_SOURCES = new Set(['CODEF', 'FILE'])
 
 function ConnectionsPage() {
   const alert = useAlert()
-  const [connections, setConnections] = useState(importMock.connections)
+  const [connections, setConnections] = useState(
+    importMock.connections.filter((connection) => !HIDDEN_SOURCES.has(connection.source)),
+  )
   const [isLive, setIsLive] = useState(false)
 
   useEffect(() => {
     importService.getConnections().then((response) => {
-      setConnections(response.connections)
+      setConnections(
+        (response.connections ?? []).filter((connection) => !HIDDEN_SOURCES.has(connection.source)),
+      )
       setIsLive(Boolean(response.live))
     })
   }, [])
