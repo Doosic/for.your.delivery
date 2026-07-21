@@ -40,10 +40,14 @@ export const briefingService = {
       ];
       return {
         summary: sections.some((section) => section.items.length > 0)
-          ? '관심 정보와 실제 판매 가격을 기준으로 오늘 확인할 상품을 정리했어요.'
+          ? body.hasPurchaseHistory
+            ? '최근 구매이력과 실제 판매 가격을 기준으로 다시 필요할 상품을 정리했어요.'
+            : '구매이력이 없어 개인 위키의 관심 정보로 첫 구매 추천을 준비했어요.'
           : '현재 추천할 수 있는 실제 상품 데이터가 없어요.',
         sections,
         live: sections.some((section) => section.items.length > 0),
+        recommendationBasis: body.recommendationBasis,
+        hasPurchaseHistory: Boolean(body.hasPurchaseHistory),
       };
     } catch {
       return EMPTY_BRIEFING;

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
@@ -25,13 +26,13 @@ class ProductImageServiceTest {
 
   @Test
   void rejectsUnsupportedImageWidth() {
-    assertThatThrownBy(() -> productImageService.resizedNaverImage("unknown", 500))
+    assertThatThrownBy(() -> productImageService.resizedImage("NAVER", "unknown", 500))
         .isInstanceOf(APIException.class)
         .hasMessage("bad request");
   }
 
   @Test
-  void rejectsImageHostOutsideNaverShopping() {
+  void returnsPlaceholderForImageHostOutsideShoppingProviders() {
     String providerCode = "image-test-" + UUID.randomUUID();
     ProductEntity product = new ProductEntity();
     product.setProductKey("NAVER:" + providerCode);
@@ -41,8 +42,10 @@ class ProductImageServiceTest {
     product.setStatus(ProductStatusCode.ACTIVE);
     productRepository.saveAndFlush(product);
 
-    assertThatThrownBy(() -> productImageService.resizedNaverImage(providerCode, 320))
-        .isInstanceOf(APIException.class)
-        .hasMessage("bad request");
+    byte[] image = productImageService.resizedImage("NAVER", providerCode, 320);
+
+    assertThat(image).isNotEmpty();
+    assertThat(image[0]).isEqualTo((byte) 0xFF);
+    assertThat(image[1]).isEqualTo((byte) 0xD8);
   }
 }

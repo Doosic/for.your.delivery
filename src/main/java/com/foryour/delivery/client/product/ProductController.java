@@ -45,6 +45,16 @@ public class ProductController extends BaseController {
     return APIDataResponse.of(productService.search(query, size, sort));
   }
 
+  @GetMapping("/wb/products")
+  public APIDataResponse<ProductModels.SearchResponse> personalizedSearch(
+      @RequestParam(defaultValue = "") String query,
+      @RequestParam(defaultValue = "20") int size,
+      @RequestParam(defaultValue = "LOW_PRICE") String sort
+  ) {
+    return APIDataResponse.of(productService.searchForUser(
+        getSessionInfo().getUserSq(), query, size, sort));
+  }
+
   @GetMapping("/wp/products/{productSq}")
   public APIDataResponse<Map<String, ProductModels.ProductItem>> detail(@PathVariable String productSq) {
     return APIDataResponse.of(Map.of("product", productService.detail(productSq)));
@@ -58,7 +68,19 @@ public class ProductController extends BaseController {
     return ResponseEntity.ok()
         .contentType(MediaType.IMAGE_JPEG)
         .cacheControl(CacheControl.maxAge(Duration.ofHours(6)).cachePublic())
-        .body(productImageService.resizedNaverImage(providerCode, width));
+        .body(productImageService.resizedImage("NAVER", providerCode, width));
+  }
+
+  @GetMapping(value = "/wp/product-images/{provider}/{providerCode}", produces = MediaType.IMAGE_JPEG_VALUE)
+  public ResponseEntity<byte[]> productImage(
+      @PathVariable String provider,
+      @PathVariable String providerCode,
+      @RequestParam(defaultValue = "640") int width
+  ) {
+    return ResponseEntity.ok()
+        .contentType(MediaType.IMAGE_JPEG)
+        .cacheControl(CacheControl.maxAge(Duration.ofHours(6)).cachePublic())
+        .body(productImageService.resizedImage(provider, providerCode, width));
   }
 
   @PostMapping("/wp/products/{provider}/{providerCode}/purchase-click")

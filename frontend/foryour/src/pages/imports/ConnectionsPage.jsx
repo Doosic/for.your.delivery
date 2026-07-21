@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ShieldCheck } from 'lucide-react'
+import { ChevronLeft, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { importService } from '@/services/importService.js'
@@ -11,7 +11,7 @@ const SOURCE_ICON_BG = {
   GOOGLE_CALENDAR: 'bg-emerald-100',
 }
 
-const HIDDEN_SOURCES = new Set(['CODEF', 'FILE'])
+const HIDDEN_SOURCES = new Set(['CODEF', 'FILE', 'GOOGLE_CALENDAR'])
 
 function ConnectionsPage() {
   const alert = useAlert()
@@ -57,15 +57,6 @@ function ConnectionsPage() {
           <h1 className="text-xl font-semibold">소스 연결 관리</h1>
         </div>
       </header>
-
-      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
-          <CalendarDays size={16} aria-hidden="true" /> 일정 기반 선행구매
-        </p>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          구글 캘린더를 연결하면 일정명, 날짜, 위치를 기준으로 필요한 물품 후보와 구매 시점을 계산해 브리핑에 반영해요.
-        </p>
-      </div>
 
       {connections.map((connection) => (
         <section

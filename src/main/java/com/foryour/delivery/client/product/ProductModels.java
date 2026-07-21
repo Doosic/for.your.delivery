@@ -63,6 +63,8 @@ public final class ProductModels {
       boolean live,
       List<String> warnings,
       boolean personalized,
+      boolean hasPurchaseHistory,
+      String recommendationBasis,
       List<String> interestKeywords,
       List<ProductFeedItem> hotProducts,
       List<ProductFeedItem> bestPriceDeals

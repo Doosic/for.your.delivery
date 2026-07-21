@@ -109,8 +109,13 @@ function HomePage() {
               onClick={() => productService.setSelectedProduct(product)}
               className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:border-cyan-300 hover:shadow"
             >
-              {product.imageUrl ? (
-                <img src={product.imageUrl} alt="" className="aspect-[4/3] w-full rounded-md object-cover" />
+              {product.imageSources?.card1x || product.imageUrl ? (
+                <img
+                  src={product.imageSources?.card1x || product.imageUrl}
+                  srcSet={product.imageSources?.card2x ? `${product.imageSources.card1x} 1x, ${product.imageSources.card2x} 2x` : undefined}
+                  alt=""
+                  className="aspect-[4/3] w-full rounded-md object-cover"
+                />
               ) : (
                 <div className="aspect-[4/3] rounded-md bg-gradient-to-br from-slate-200 to-slate-50" />
               )}
@@ -142,8 +147,12 @@ function HomePage() {
                 onClick={() => productService.setSelectedProduct(deal)}
                 className="flex items-center gap-4 py-3 transition hover:bg-slate-50"
               >
-                {deal.imageUrl ? (
-                  <img src={deal.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-md object-cover" />
+                {deal.imageSources?.card1x || deal.imageUrl ? (
+                  <img
+                    src={deal.imageSources?.card1x || deal.imageUrl}
+                    alt=""
+                    className="h-12 w-12 shrink-0 rounded-md object-cover"
+                  />
                 ) : (
                   <div className="h-12 w-12 shrink-0 rounded-md bg-gradient-to-br from-slate-200 to-slate-50" />
                 )}

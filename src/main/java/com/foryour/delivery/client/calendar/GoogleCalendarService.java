@@ -90,6 +90,16 @@ public class GoogleCalendarService {
     return authorizedClientService.loadAuthorizedClient("google", email) != null;
   }
 
+  public CalendarResult storedSuggestions(Long userSq, LocalDate from, LocalDate to) {
+    List<StoredCalendarEvent> stored = calendarPersistenceService.events(
+        userSq, from.atStartOfDay(), to.plusDays(1).atStartOfDay().minusNanos(1));
+    List<CalendarSuggestion> suggestions = new ArrayList<>();
+    for (StoredCalendarEvent event : stored) {
+      suggestions.add(toSuggestion(event));
+    }
+    return new CalendarResult(false, !suggestions.isEmpty(), suggestions, null);
+  }
+
   @SuppressWarnings("unchecked")
   private List<CalendarEventInput> fetchCalendar(
       OAuth2AuthorizedClient client,

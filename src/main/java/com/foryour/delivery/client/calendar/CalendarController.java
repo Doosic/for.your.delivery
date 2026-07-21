@@ -5,14 +5,10 @@ import com.foryour.delivery.common.BaseController;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
 import com.foryour.delivery.client.user.bean.UserResponseVO;
 
 @RestController
@@ -21,7 +17,7 @@ public class CalendarController extends BaseController {
 
   private final GoogleCalendarService googleCalendarService;
 
-  @GetMapping("/wp/calendar/purchase-suggestions")
+  @GetMapping("/wb/calendar/purchase-suggestions")
   public APIDataResponse<GoogleCalendarService.CalendarResult> suggestions(
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
@@ -29,35 +25,7 @@ public class CalendarController extends BaseController {
     LocalDate start = from == null ? LocalDate.now() : from;
     LocalDate end = to == null ? start.plusDays(30) : to;
     UserResponseVO user = getSessionInfo();
-    return APIDataResponse.of(googleCalendarService.suggestions(
-        user.getUserSq(), user.getEmail(), start, end, List.of("primary")
-    ));
-  }
-
-  @PostMapping("/wp/calendar/sync")
-  public APIDataResponse<Map<String, Object>> sync(@RequestBody SyncRequest request) {
-    List<String> calendarIds = request.calendarIds() == null || request.calendarIds().isEmpty()
-        ? List.of("primary")
-        : request.calendarIds();
-    LocalDate start = request.from() == null ? LocalDate.now() : request.from();
-    LocalDate end = request.to() == null ? start.plusDays(30) : request.to();
-    UserResponseVO user = getSessionInfo();
-    GoogleCalendarService.CalendarResult result = googleCalendarService.suggestions(
-        user.getUserSq(), user.getEmail(), start, end, calendarIds
-    );
-    int suggestionCount = result.suggestions().stream().mapToInt(item -> item.items().size()).sum();
-    return APIDataResponse.of(Map.of(
-        "connected", result.connected(),
-        "live", result.live(),
-        "eventCount", result.suggestions().size(),
-        "suggestionCount", suggestionCount
-    ));
-  }
-
-  public record SyncRequest(
-      List<String> calendarIds,
-      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
-  ) {
+    return APIDataResponse.of(googleCalendarService.storedSuggestions(
+        user.getUserSq(), start, end));
   }
 }

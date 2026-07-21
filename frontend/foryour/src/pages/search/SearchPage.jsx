@@ -23,9 +23,14 @@ function SearchPage() {
 
   const loadProducts = async (query, nextSort) => {
     setIsLoading(true)
-    setCurrentQuery(query)
     try {
-      const response = await productService.search({ query, size: 24, sort: nextSort })
+      const response = await productService.search({
+        query,
+        size: 24,
+        sort: nextSort,
+        personalized: isLoggedIn,
+      })
+      setCurrentQuery(response.query || query)
       setResults(response.items ?? [])
       setKeywordSuggestions(response.keywordSuggestions ?? [])
       setWarnings(response.warnings ?? [])
@@ -39,9 +44,15 @@ function SearchPage() {
 
   useEffect(() => {
     let active = true
-    productService.search({ query: DEFAULT_QUERY, size: 24, sort: 'LOW_PRICE' })
+    productService.search({
+      query: isLoggedIn ? '' : DEFAULT_QUERY,
+      size: 24,
+      sort: 'LOW_PRICE',
+      personalized: isLoggedIn,
+    })
       .then((response) => {
         if (!active) return
+        setCurrentQuery(response.query || DEFAULT_QUERY)
         setResults(response.items ?? [])
         setKeywordSuggestions(response.keywordSuggestions ?? [])
         setWarnings(response.warnings ?? [])
@@ -57,7 +68,7 @@ function SearchPage() {
     return () => {
       active = false
     }
-  }, [])
+  }, [isLoggedIn])
 
   const search = (nextKeyword = keyword) => {
     const query = nextKeyword.trim()
@@ -117,7 +128,9 @@ function SearchPage() {
 
       <div className="flex flex-col gap-3 border-b border-slate-200 pb-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold text-cyan-700">네이버 쇼핑 랭킹</p>
+          <p className="text-xs font-semibold text-cyan-700">
+            {isLoggedIn ? '내 구매·위키 기반 추천' : '네이버 쇼핑 랭킹'}
+          </p>
           <h1 className="mt-1 text-xl font-semibold text-slate-950">{currentQuery}</h1>
         </div>
         <div className="inline-flex h-10 self-start rounded-md border border-slate-300 bg-white p-1 sm:self-auto" aria-label="상품 정렬">

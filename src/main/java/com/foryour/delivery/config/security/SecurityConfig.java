@@ -22,8 +22,6 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProviderBuilder;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
-import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -46,17 +44,13 @@ public class SecurityConfig {
   private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
   private final JwtRequestFilter jwtRequestFilter;
   private final BCryptPasswordEncoder bCryptPasswordEncoder;
-  private final GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler;
 
   private static final String[] WHITE_LIST = {
       "/**"
   };
 
   @Bean
-  public SecurityFilterChain filterChain(
-      HttpSecurity http,
-      ClientRegistrationRepository clientRegistrationRepository
-  ) throws Exception {
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
         .httpBasic(withDefaults())
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -69,12 +63,7 @@ public class SecurityConfig {
         .sessionManagement(session -> session
             .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
         .formLogin(AbstractHttpConfigurer::disable)
-        .oauth2Login(oauth -> oauth
-            .authorizationEndpoint(endpoint -> endpoint
-                .authorizationRequestResolver(googleAuthorizationRequestResolver(clientRegistrationRepository)))
-            .successHandler(googleOAuth2SuccessHandler)
-            .failureHandler((request, response, exception) -> response.sendRedirect(
-                cProperties.getFrontendBaseUrl() + "/app/login?error=google_oauth_failed")))
+        .oauth2Login(AbstractHttpConfigurer::disable)
         .addFilter(getAuthenticationFilter())
         .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -119,20 +108,6 @@ public class SecurityConfig {
         );
     manager.setAuthorizedClientProvider(provider);
     return manager;
-  }
-
-  private OAuth2AuthorizationRequestResolver googleAuthorizationRequestResolver(
-      ClientRegistrationRepository clientRegistrationRepository
-  ) {
-    DefaultOAuth2AuthorizationRequestResolver resolver = new DefaultOAuth2AuthorizationRequestResolver(
-        clientRegistrationRepository,
-        "/oauth2/authorization"
-    );
-    resolver.setAuthorizationRequestCustomizer(customizer -> customizer.additionalParameters(parameters -> {
-      parameters.put("access_type", "offline");
-      parameters.put("prompt", "consent");
-    }));
-    return resolver;
   }
 
   private AuthenticationFilter getAuthenticationFilter() throws Exception {

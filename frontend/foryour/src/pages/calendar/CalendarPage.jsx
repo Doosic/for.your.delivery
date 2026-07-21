@@ -1,9 +1,6 @@
-import { CalendarDays, CheckCircle2, Link as LinkIcon, RefreshCw } from 'lucide-react'
+import { CalendarDays, CheckCircle2 } from 'lucide-react'
 import { startTransition, useEffect, useMemo, useState } from 'react'
-import { useOutletContext, useSearchParams } from 'react-router-dom'
 import { calendarService } from '@/services/calendarService.js'
-import { importService } from '@/services/importService.js'
-import { useAlert } from '@/shared/hooks/useAlert.jsx'
 import { useAuth } from '@/shared/hooks/useAuth.jsx'
 
 const RANGE_OPTIONS = [
@@ -15,15 +12,10 @@ const RANGE_OPTIONS = [
 ]
 
 function CalendarPage() {
-  const alert = useAlert()
   const { isLoggedIn } = useAuth()
-  const { openLogin } = useOutletContext()
-  const [searchParams, setSearchParams] = useSearchParams()
   const [rangeDays, setRangeDays] = useState(30)
   const range = useMemo(() => calendarService.getDefaultRange(rangeDays), [rangeDays])
-  const [connected, setConnected] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [isSyncing, setIsSyncing] = useState(false)
   const [events, setEvents] = useState([])
   const [warning, setWarning] = useState(null)
 
@@ -36,7 +28,6 @@ function CalendarPage() {
         if (cancelled) return
         startTransition(() => {
           setEvents(response.suggestions ?? [])
-          setConnected(Boolean(response.connected))
           setWarning(response.warning || null)
           setIsLoading(false)
         })
@@ -47,101 +38,24 @@ function CalendarPage() {
     }
   }, [range.from, range.to])
 
-  useEffect(() => {
-    const calendarStatus = searchParams.get('calendar')
-    if (!calendarStatus) return
-
-    if (calendarStatus === 'connected') {
-      alert.alertSuccess('알림', 'Google Calendar 연결이 완료되었습니다.')
-    } else if (calendarStatus === 'denied' || calendarStatus === 'error') {
-      alert.alertWarning('알림', 'Google Calendar 연결을 완료하지 못했습니다.')
-    }
-
-    startTransition(() => {
-      const nextParams = new URLSearchParams(searchParams)
-      nextParams.delete('calendar')
-      setSearchParams(nextParams, { replace: true })
-    })
-  }, [alert, searchParams, setSearchParams])
-
-  const applyResponse = (response) => {
-    setEvents(response.suggestions ?? [])
-    setConnected(Boolean(response.connected))
-    setWarning(response.warning || null)
-    setIsLoading(false)
-    return response
-  }
-
-  const reloadEvents = async () => {
-    setIsLoading(true)
-    const response = await calendarService.getSuggestions({
-      from: range.from,
-      to: range.to,
-    })
-    return applyResponse(response)
-  }
-
   const handleRangeChange = (days) => {
     if (days === rangeDays) return
     setIsLoading(true)
     setRangeDays(days)
   }
 
-  const handleConnect = async () => {
-    if (!isLoggedIn) {
-      openLogin()
-      return
-    }
-    const result = await importService.connect('GOOGLE_CALENDAR')
-    if (result.redirecting) return
-    setConnected(true)
-    await alert.alertSuccess('알림', 'Google Calendar 연결이 완료되었습니다.')
-    await reloadEvents()
-  }
-
-  const handleSync = async () => {
-    setIsSyncing(true)
-    const response = await calendarService.sync({
-      from: range.from,
-      to: range.to,
-    })
-    const next = await reloadEvents()
-    setIsSyncing(false)
-    await alert.alertSuccess(
-      '알림',
-      `다가오는 일정 ${response.eventCount ?? next.suggestions?.length ?? 0}건을 불러왔습니다.`,
-    )
-  }
-
   return (
     <div className="space-y-5">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <header>
         <div>
           <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
-            <CalendarDays size={16} aria-hidden="true" /> Google Calendar
+            <CalendarDays size={16} aria-hidden="true" /> 내 일정
           </p>
           <h1 className="mt-1 text-xl font-semibold">다가오는 일정</h1>
           <p className="mt-1 text-sm leading-6 text-slate-500">
-            오늘부터 선택한 기간의 Google Calendar 일정을 불러와 표시합니다.
+            계정에 저장된 일정과 미리 준비할 상품을 함께 표시합니다.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={connected ? handleSync : handleConnect}
-          disabled={isSyncing || isLoading}
-          className="flex h-10 items-center justify-center gap-2 rounded-md bg-cyan-700 px-4 text-sm font-semibold text-white transition hover:bg-cyan-800 disabled:opacity-50"
-        >
-          {connected ? (
-            <RefreshCw size={15} className={isSyncing ? 'animate-spin' : ''} aria-hidden="true" />
-          ) : (
-            <LinkIcon size={15} aria-hidden="true" />
-          )}
-          {connected
-            ? isSyncing
-              ? '불러오는 중...'
-              : '일정 다시 불러오기'
-            : 'Calendar 연결'}
-        </button>
       </header>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -173,7 +87,7 @@ function CalendarPage() {
 
       <section className="grid gap-3 md:grid-cols-3">
         {[
-          ['연결 상태', connected ? '연결됨' : isLoggedIn ? '연결 대기' : '로그인 필요'],
+          ['데이터 기준', isLoggedIn ? '내 계정' : '로그인 필요'],
           ['조회 기간', `${rangeDays}일`],
           ['일정 수', isLoading ? '불러오는 중' : `${events.length}건`],
         ].map(([label, value]) => (
@@ -186,7 +100,7 @@ function CalendarPage() {
 
       {!isLoggedIn && (
         <section className="rounded-lg border border-cyan-200 bg-cyan-50 p-4 text-sm leading-6 text-slate-600">
-          FUB 로그인 후 Google Calendar 읽기 권한만 연결합니다. Google 계정 정보로 FUB에 로그인하거나 새 회원을 만들지 않습니다.
+          로그인하면 계정별로 저장된 일정과 일정 기반 준비물 추천을 확인할 수 있어요.
         </section>
       )}
 
@@ -208,9 +122,9 @@ function CalendarPage() {
           <p className="p-10 text-center text-sm text-slate-400">일정을 불러오는 중입니다...</p>
         ) : events.length === 0 ? (
           <p className="p-10 text-center text-sm text-slate-400">
-            {connected
-              ? '해당 기간에 표시할 일정이 없습니다.'
-              : 'Google Calendar를 연결하면 다가오는 일정이 여기에 표시됩니다.'}
+            {isLoggedIn
+              ? '해당 기간에 저장된 일정이 없습니다.'
+              : '로그인하면 내 일정을 확인할 수 있어요.'}
           </p>
         ) : (
           <ul className="max-h-[28rem] divide-y divide-slate-100 overflow-y-auto">

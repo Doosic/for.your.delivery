@@ -13,5 +13,11 @@ public interface PurchaseClickRepository extends JpaRepository<PurchaseClickEnti
 
   long countByProviderAndExternalProductId(String provider, String externalProductId);
 
+  long countByProviderAndExternalProductIdAndUserSq(
+      String provider,
+      String externalProductId,
+      Long userSq
+  );
+
   List<PurchaseClickEntity> findAllByUserSqOrderByClickedAtDesc(Long userSq);
 }

@@ -1,5 +1,4 @@
 import api from '@/shared/libs/api.js'
-import { calendarMock } from '@/services/mockData.js'
 import { assertSuccessBody } from '@/shared/libs/api-result.js'
 
 const toLocalDateString = (date) => {
@@ -24,9 +23,11 @@ export const calendarService = {
   async getSuggestions({ from, to } = {}) {
     const range = from && to ? { from, to } : calendarService.getDefaultRange()
     try {
-      const response = await api.GET('/delivery/wp/calendar/purchase-suggestions', {
+      const response = await api.GET('/delivery/wb/calendar/purchase-suggestions', {
         from: range.from,
         to: range.to,
+      }, {
+        skipUnauthorizedRedirect: true,
       })
       const body = assertSuccessBody(response, response.msg || 'fail')
       return {
@@ -37,31 +38,14 @@ export const calendarService = {
       }
     } catch {
       return {
-        suggestions: calendarMock.suggestions,
+        suggestions: [],
         connected: false,
         live: false,
-        warning: null,
+        warning: '로그인하면 내 일정과 준비물 추천을 확인할 수 있어요.',
         from: range.from,
         to: range.to,
       }
     }
   },
 
-  async sync({ from, to, calendarIds = ['primary'] } = {}) {
-    const range = from && to ? { from, to } : calendarService.getDefaultRange()
-    try {
-      const response = await api.POST('/delivery/wp/calendar/sync', {
-        calendarIds,
-        from: range.from,
-        to: range.to,
-      })
-      return assertSuccessBody(response, response.msg || 'fail')
-    } catch {
-      return {
-        eventCount: calendarMock.suggestions.length,
-        suggestionCount: calendarMock.suggestions.length,
-        live: false,
-      }
-    }
-  },
 }

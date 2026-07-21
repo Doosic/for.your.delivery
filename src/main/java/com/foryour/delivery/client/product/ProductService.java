@@ -1,9 +1,12 @@
 package com.foryour.delivery.client.product;
 
 import com.foryour.delivery.common.CProperties;
+import com.foryour.delivery.domain.entity.ProductEntity;
+import com.foryour.delivery.domain.entity.PurchaseClickEntity;
 import com.foryour.delivery.domain.entity.WikiEntryEntity;
 import com.foryour.delivery.domain.enums.WikiEntryStatusCode;
 import com.foryour.delivery.domain.repository.PurchaseClickRepository;
+import com.foryour.delivery.domain.repository.ProductRepository;
 import com.foryour.delivery.domain.repository.WikiEntryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +52,8 @@ public class ProductService {
   private final ProductCatalogMessagePublisher productCatalogMessagePublisher;
   private final WikiEntryRepository wikiEntryRepository;
   private final PurchaseClickRepository purchaseClickRepository;
+  private final ProductRepository productRepository;
+  private final ProductImageService productImageService;
   private final Map<String, ProductItem> productCache = new ConcurrentHashMap<>();
 
   public SearchResponse search(String query, int requestedSize) {
@@ -56,6 +61,27 @@ public class ProductService {
   }
 
   public SearchResponse search(String query, int requestedSize, String requestedSort) {
+    return searchInternal(null, query, requestedSize, requestedSort);
+  }
+
+  public SearchResponse searchForUser(
+      Long userSq,
+      String query,
+      int requestedSize,
+      String requestedSort
+  ) {
+    String resolvedQuery = StringUtils.hasText(query)
+        ? query.trim()
+        : recommendationProfile(userSq).keywords().getFirst();
+    return searchInternal(userSq, resolvedQuery, requestedSize, requestedSort);
+  }
+
+  private SearchResponse searchInternal(
+      Long userSq,
+      String query,
+      int requestedSize,
+      String requestedSort
+  ) {
     String keyword = StringUtils.hasText(query) ? query.trim() : "생활용품";
     int size = Math.max(1, Math.min(requestedSize, 40));
     SearchSort sort = SearchSort.from(requestedSort);
@@ -82,7 +108,7 @@ public class ProductService {
 
     boolean live = !merged.isEmpty();
     List<ProductItem> sourceItems = live ? new ArrayList<>(merged.values()) : demoProducts(keyword);
-    sortItems(sourceItems, sort);
+    sortItems(sourceItems, sort, userSq);
     List<ProductItem> items = new ArrayList<>();
     for (ProductItem item : sourceItems) {
       if (items.size() >= size) {
@@ -118,7 +144,7 @@ public class ProductService {
     return new SearchResponse(keyword, live, sources, warnings, keywordSuggestions, categories, items);
   }
 
-  private void sortItems(List<ProductItem> items, SearchSort sort) {
+  private void sortItems(List<ProductItem> items, SearchSort sort, Long userSq) {
     if (sort == SearchSort.POPULAR) {
       return;
     }
@@ -130,8 +156,11 @@ public class ProductService {
     items.sort(Comparator
         .comparingLong((ProductItem item) -> clickCounts.computeIfAbsent(
             item.source() + ":" + item.providerCode(),
-            ignored -> purchaseClickRepository.countByProviderAndExternalProductId(
-                item.source(), item.providerCode())))
+            ignored -> userSq == null
+                ? purchaseClickRepository.countByProviderAndExternalProductId(
+                    item.source(), item.providerCode())
+                : purchaseClickRepository.countByProviderAndExternalProductIdAndUserSq(
+                    item.source(), item.providerCode(), userSq)))
         .reversed()
         .thenComparingLong(ProductItem::price));
   }
@@ -158,7 +187,8 @@ public class ProductService {
   }
 
   public HomeFeedResponse homeFeed(Long userSq) {
-    List<String> keywords = interestKeywords(userSq);
+    RecommendationProfile profile = recommendationProfile(userSq);
+    List<String> keywords = profile.keywords();
     LinkedHashMap<String, ProductFeedItem> merged = new LinkedHashMap<>();
     List<String> warnings = new ArrayList<>();
     boolean live = false;
@@ -199,6 +229,8 @@ public class ProductService {
         live,
         warnings,
         userSq != null,
+        profile.hasPurchaseHistory(),
+        profile.basis(),
         keywords,
         hotProducts,
         bestPriceDeals
@@ -319,7 +351,7 @@ public class ProductService {
             childText(product, "DetailPageUrl", ""),
             id,
             List.of(),
-            new ImageSources(cardImage, largestImage, largestImage, largestImage)
+            imageSources("ELEVENST", id, largestImage)
         ));
       }
       return items;
@@ -350,16 +382,29 @@ public class ProductService {
   }
 
   private ImageSources imageSources(String source, String providerCode, String original) {
-    if (!"NAVER".equals(source) || !providerCode.matches("[A-Za-z0-9_-]+")) {
+    if (!providerCode.matches("[A-Za-z0-9_-]+")) {
       return new ImageSources(original, original, original, original);
     }
-    String base = "/delivery/wp/product-images/" + providerCode;
+    productImageService.remember(source, providerCode, original);
+    if ("ELEVENST".equals(source) && original.contains("/11dims/resize/x")) {
+      return new ImageSources(
+          elevenstImage(original, 320),
+          elevenstImage(original, 640),
+          elevenstImage(original, 960),
+          original
+      );
+    }
+    String base = "/delivery/wp/product-images/" + source + "/" + providerCode;
     return new ImageSources(
         base + "?width=320",
         base + "?width=640",
         base + "?width=960",
         original
     );
+  }
+
+  private String elevenstImage(String original, int width) {
+    return original.replaceFirst("/11dims/resize/x\\d+/", "/11dims/resize/x" + width + "/");
   }
 
   private void collectSafely(String keyword, List<ProductItem> items) {
@@ -451,9 +496,27 @@ public class ProductService {
     );
   }
 
-  private List<String> interestKeywords(Long userSq) {
+  private RecommendationProfile recommendationProfile(Long userSq) {
     if (userSq == null) {
-      return List.of("생활용품");
+      return new RecommendationProfile(List.of("생활용품"), false, "POPULAR");
+    }
+
+    LinkedHashSet<String> purchaseKeywords = new LinkedHashSet<>();
+    List<PurchaseClickEntity> clicks = purchaseClickRepository.findAllByUserSqOrderByClickedAtDesc(userSq);
+    for (PurchaseClickEntity click : clicks) {
+      ProductEntity product = productRepository.findById(click.getProductSq()).orElse(null);
+      if (product == null) {
+        continue;
+      }
+      String context = (stringValue(product.getName(), "") + " "
+          + stringValue(product.getCategoryPath(), "")).toUpperCase(Locale.ROOT);
+      addInterestKeywords(context, purchaseKeywords);
+      if (purchaseKeywords.size() >= 3) {
+        break;
+      }
+    }
+    if (!purchaseKeywords.isEmpty()) {
+      return new RecommendationProfile(limitKeywords(purchaseKeywords), true, "PURCHASE_HISTORY");
     }
 
     List<WikiEntryEntity> entries = wikiEntryRepository
@@ -470,6 +533,11 @@ public class ProductService {
     if (keywords.isEmpty()) {
       keywords.add("생활용품");
     }
+    return new RecommendationProfile(limitKeywords(keywords), false,
+        entries.isEmpty() ? "POPULAR" : "PERSONAL_WIKI");
+  }
+
+  private List<String> limitKeywords(Set<String> keywords) {
     List<String> limitedKeywords = new ArrayList<>();
     for (String keyword : keywords) {
       if (limitedKeywords.size() >= 3) {
@@ -477,7 +545,7 @@ public class ProductService {
       }
       limitedKeywords.add(keyword);
     }
-    return limitedKeywords;
+    return List.copyOf(limitedKeywords);
   }
 
   private void addInterestKeywords(String context, Set<String> keywords) {
@@ -497,12 +565,25 @@ public class ProductService {
     if (context.contains("HOUSEHOLD") || context.contains("생활용품")) {
       keywords.add("생활용품");
     }
+    if (context.contains("세제") || context.contains("세탁")) {
+      keywords.add("세탁세제");
+    }
+    if (context.contains("커피")) {
+      keywords.add("커피");
+    }
     if (context.contains("CAMPING") || context.contains("캠핑")) {
       keywords.add("캠핑 용품");
     }
     if (context.contains("BABY") || context.contains("육아")) {
       keywords.add("유아 용품");
     }
+  }
+
+  private record RecommendationProfile(
+      List<String> keywords,
+      boolean hasPurchaseHistory,
+      String basis
+  ) {
   }
 
   private String cleanTitle(String value) {
