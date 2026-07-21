@@ -86,34 +86,6 @@ function ProductDetailPage() {
               ))}
             </ul>
 
-            <div className="mt-5 border-t border-slate-100 pt-5">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <FileText size={16} className="text-cyan-700" aria-hidden="true" /> 상품 정보 요약
-                </h2>
-                <span className="text-xs font-medium text-slate-400">판매처 제공 정보 기준</span>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
-
-              {(product.brand || product.maker) && (
-                <dl className="mt-4 grid gap-2 bg-slate-50 p-3 text-sm sm:grid-cols-2">
-                  {product.brand && (
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Tags size={15} className="shrink-0 text-slate-400" aria-hidden="true" />
-                      <dt className="shrink-0 text-slate-500">브랜드</dt>
-                      <dd className="truncate font-semibold text-slate-800">{product.brand}</dd>
-                    </div>
-                  )}
-                  {product.maker && (
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Building2 size={15} className="shrink-0 text-slate-400" aria-hidden="true" />
-                      <dt className="shrink-0 text-slate-500">제조사</dt>
-                      <dd className="truncate font-semibold text-slate-800">{product.maker}</dd>
-                    </div>
-                  )}
-                </dl>
-              )}
-            </div>
           </div>
         </div>
 
@@ -171,6 +143,37 @@ function ProductDetailPage() {
               판매처로 이동
             </button>
           </div>
+
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                <FileText size={17} className="text-cyan-700" aria-hidden="true" /> 상품 정보 요약
+              </h2>
+              <span className={`shrink-0 text-xs font-semibold ${product.aiSummary ? 'text-cyan-700' : 'text-slate-400'}`}>
+                {product.aiSummary ? 'AI 요약' : '판매처 정보 기준'}
+              </span>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-slate-600">{description}</p>
+
+            {(product.brand || product.maker) && (
+              <dl className="mt-5 grid gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-2">
+                {product.brand && (
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Tags size={15} className="shrink-0 text-slate-400" aria-hidden="true" />
+                    <dt className="shrink-0 text-slate-500">브랜드</dt>
+                    <dd className="truncate font-semibold text-slate-800">{product.brand}</dd>
+                  </div>
+                )}
+                {product.maker && (
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Building2 size={15} className="shrink-0 text-slate-400" aria-hidden="true" />
+                    <dt className="shrink-0 text-slate-500">제조사</dt>
+                    <dd className="truncate font-semibold text-slate-800">{product.maker}</dd>
+                  </div>
+                )}
+              </dl>
+            )}
+          </section>
         </div>
       </div>
     </div>

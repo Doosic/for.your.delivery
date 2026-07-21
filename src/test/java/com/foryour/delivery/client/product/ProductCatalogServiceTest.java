@@ -87,7 +87,8 @@ class ProductCatalogServiceTest {
         new ImageSources("/card-1x", "/card-2x", "/detail", original),
         "테스트 브랜드",
         "테스트 제조사",
-        "생활용품 상품 설명"
+        "생활용품 상품 설명",
+        false
     );
   }
 }

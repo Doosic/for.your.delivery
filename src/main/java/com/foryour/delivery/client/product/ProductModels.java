@@ -20,7 +20,8 @@ public final class ProductModels {
       ImageSources imageSources,
       String brand,
       String maker,
-      String description
+      String description,
+      boolean aiSummary
   ) {
   }
 

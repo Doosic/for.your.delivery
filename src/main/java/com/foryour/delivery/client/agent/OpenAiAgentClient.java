@@ -42,16 +42,29 @@ public class OpenAiAgentClient {
   }
 
   public Optional<OpenAiReply> generate(AgentTypeCode agentType, Map<String, Object> safeContext) {
+    return generate(prompts.instructions(agentType), safeContext, properties.getMaxOutputTokens());
+  }
+
+  public Optional<OpenAiReply> summarizeProduct(Map<String, Object> productContext) {
+    return generate(prompts.productSummaryInstructions(), productContext,
+        Math.min(properties.getMaxOutputTokens(), 220));
+  }
+
+  private Optional<OpenAiReply> generate(
+      String instructions,
+      Map<String, Object> safeContext,
+      int maxOutputTokens
+  ) {
     if (!isConfigured()) {
       return Optional.empty();
     }
 
     Map<String, Object> request = Map.of(
         "model", properties.getModel(),
-        "instructions", prompts.instructions(agentType),
+        "instructions", instructions,
         "input", safeContext.toString(),
         "reasoning", Map.of("effort", properties.getReasoningEffort()),
-        "max_output_tokens", properties.getMaxOutputTokens(),
+        "max_output_tokens", maxOutputTokens,
         "store", false
     );
 

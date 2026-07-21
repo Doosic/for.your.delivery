@@ -1,5 +1,6 @@
 package com.foryour.delivery.client.product;
 
+import com.foryour.delivery.client.agent.OpenAiAgentClient;
 import com.foryour.delivery.common.CProperties;
 import com.foryour.delivery.domain.entity.ProductEntity;
 import com.foryour.delivery.domain.entity.PurchaseClickEntity;
@@ -56,7 +57,9 @@ public class ProductService {
   private final ProductRepository productRepository;
   private final ProductOfferRepository productOfferRepository;
   private final ProductImageService productImageService;
+  private final OpenAiAgentClient openAiAgentClient;
   private final Map<String, ProductItem> productCache = new ConcurrentHashMap<>();
+  private final Map<String, ProductSummary> productSummaryCache = new ConcurrentHashMap<>();
 
   public SearchResponse search(String query, int requestedSize) {
     return search(query, requestedSize, "LOW_PRICE");
@@ -249,9 +252,9 @@ public class ProductService {
 
   public ProductItem detail(String productSq) {
     ProductItem cached = productCache.get(productSq);
-    if (cached != null) return cached;
+    if (cached != null) return withProductSummary(cached);
     ProductItem stored = storedProduct(productSq);
-    if (stored != null) return stored;
+    if (stored != null) return withProductSummary(stored);
     List<ProductItem> demoItems = demoProducts("추천");
     for (ProductItem item : demoItems) {
       if (item.productSq().equals(productSq)) {
@@ -291,7 +294,8 @@ public class ProductService {
                       categories,
                       stringValue(product.getBrand(), ""),
                       stringValue(product.getMaker(), ""),
-                      offer.getMallName())
+                      offer.getMallName()),
+                  false
               );
             }))
         .orElse(null);
@@ -345,7 +349,8 @@ public class ProductService {
             imageSources("NAVER", id, imageUrl),
             brand,
             maker,
-            productDescription(categories, brand, maker, mallName)
+            productDescription(categories, brand, maker, mallName),
+            false
         ));
       }
       return items;
@@ -408,7 +413,8 @@ public class ProductService {
             imageSources("ELEVENST", id, largestImage),
             brand,
             maker,
-            productDescription(List.of(), brand, maker, mallName)
+            productDescription(List.of(), brand, maker, mallName),
+            false
         ));
       }
       return items;
@@ -431,8 +437,39 @@ public class ProductService {
     return new ProductItem(
         productSq, name, price, "통합 상품 검색", "DEMO", "", productUrl,
         "SERVER_DEMO", List.of(), new ImageSources("", "", "", ""), "", "",
-        "판매처에서 제공하는 상품 정보를 준비하고 있습니다."
+        "판매처에서 제공하는 상품 정보를 준비하고 있습니다.", false
     );
+  }
+
+  private ProductItem withProductSummary(ProductItem product) {
+    if (product.aiSummary() || !isSupportedProvider(product.source())) return product;
+
+    ProductSummary summary = productSummaryCache.computeIfAbsent(product.productSq(), ignored ->
+        openAiAgentClient.summarizeProduct(Map.of(
+                "name", product.name(),
+                "categories", product.categories(),
+                "brand", stringValue(product.brand(), ""),
+                "maker", stringValue(product.maker(), ""),
+                "mallName", stringValue(product.mallName(), "")
+            ))
+            .map(reply -> new ProductSummary(
+                normalizedSummary(reply.text(), product.description()), true))
+            .orElseGet(() -> new ProductSummary(product.description(), false))
+    );
+    ProductItem summarized = new ProductItem(
+        product.productSq(), product.name(), product.price(), product.mallName(), product.source(),
+        product.imageUrl(), product.productUrl(), product.providerCode(), product.categories(),
+        product.imageSources(), product.brand(), product.maker(), summary.text(), summary.generatedByAi()
+    );
+    productCache.put(product.productSq(), summarized);
+    return summarized;
+  }
+
+  private String normalizedSummary(String value, String fallback) {
+    if (!StringUtils.hasText(value)) return fallback;
+    String normalized = value.replaceAll("\\s+", " ").trim();
+    if (normalized.length() <= 220) return normalized;
+    return normalized.substring(0, 217).stripTrailing() + "...";
   }
 
   private List<String> categoryPath(String value) {
@@ -455,6 +492,9 @@ public class ProductService {
 
   private boolean isSupportedProvider(String provider) {
     return "NAVER".equals(provider) || "ELEVENST".equals(provider);
+  }
+
+  private record ProductSummary(String text, boolean generatedByAi) {
   }
 
   private List<String> categoryValues(Map<?, ?> item) {

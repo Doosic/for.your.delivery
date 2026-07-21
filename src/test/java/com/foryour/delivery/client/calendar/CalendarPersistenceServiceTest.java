@@ -115,7 +115,8 @@ class CalendarPersistenceServiceTest {
         new ImageSources(image, image, image, image),
         "",
         "",
-        "테스트 모기퇴치제 상품 설명"
+        "테스트 모기퇴치제 상품 설명",
+        false
     );
   }
 

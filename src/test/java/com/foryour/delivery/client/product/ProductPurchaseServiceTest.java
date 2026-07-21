@@ -74,7 +74,8 @@ class ProductPurchaseServiceTest {
         new ImageSources(image, image, image, image),
         "",
         "",
-        "테스트 생필품 상품 설명"
+        "테스트 생필품 상품 설명",
+        false
     );
   }
 
