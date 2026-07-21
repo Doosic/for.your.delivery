@@ -45,12 +45,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
       "/resources/**",
       "/oauth2/**",
       "/error",
-      "/wp/user/crypto-public-key",
-      "/wp/user/signup",
-      "/wp/user/login",
-      "/wp/products",
-      "/wp/products/**",
-      "/wp/event"
+      "/wp/**"
   ));
 
   @Override
