@@ -83,9 +83,20 @@ public class MemberFeatureService {
 
   public InventoryView inventory(Long userSq, String status) {
     List<InventoryItem> items = new ArrayList<>(userInventory(userSq).values());
-    items.sort(Comparator.comparing(InventoryItem::inventoryItemSq));
+    items.sort(new Comparator<InventoryItem>() {
+      @Override
+      public int compare(InventoryItem first, InventoryItem second) {
+        return first.inventoryItemSq().compareTo(second.inventoryItemSq());
+      }
+    });
     if (status != null && !status.isBlank() && !status.equalsIgnoreCase("ALL")) {
-      items = items.stream().filter(item -> item.status().equalsIgnoreCase(status)).toList();
+      List<InventoryItem> filteredItems = new ArrayList<>();
+      for (InventoryItem item : items) {
+        if (item.status().equalsIgnoreCase(status)) {
+          filteredItems.add(item);
+        }
+      }
+      items = filteredItems;
     }
     return new InventoryView(items, items.size(), false);
   }
@@ -119,15 +130,27 @@ public class MemberFeatureService {
 
   public List<Long> importInventoryItems(Long userSq, List<Long> importedItemSqs) {
     Map<Long, InventoryItem> inventory = userInventory(userSq);
-    return importedItemSqs.stream().map(importedItemSq -> {
+    List<Long> inventoryItemSqs = new ArrayList<>();
+    for (Long importedItemSq : importedItemSqs) {
       long inventoryItemSq = 1_000 + importedItemSq;
-      String name = switch (importedItemSq.intValue()) {
-        case 1 -> "고양이 사료 오리진 1.5kg";
-        case 2 -> "세탁세제 리필 2.6L";
-        case 3 -> "우유 900ml x2";
-        case 4 -> "물티슈 캡형 10팩";
-        default -> "가져온 구매 품목 " + importedItemSq;
-      };
+      String name;
+      switch (importedItemSq.intValue()) {
+        case 1:
+          name = "고양이 사료 오리진 1.5kg";
+          break;
+        case 2:
+          name = "세탁세제 리필 2.6L";
+          break;
+        case 3:
+          name = "우유 900ml x2";
+          break;
+        case 4:
+          name = "물티슈 캡형 10팩";
+          break;
+        default:
+          name = "가져온 구매 품목 " + importedItemSq;
+          break;
+      }
       inventory.putIfAbsent(inventoryItemSq, new InventoryItem(
           inventoryItemSq,
           name,
@@ -142,13 +165,19 @@ public class MemberFeatureService {
           0.85,
           Instant.now().toString()
       ));
-      return inventoryItemSq;
-    }).toList();
+      inventoryItemSqs.add(inventoryItemSq);
+    }
+    return inventoryItemSqs;
   }
 
   public WikiView wiki(Long userSq, String userName) {
     List<WikiEntry> entries = new ArrayList<>(userWiki(userSq).values());
-    entries.sort(Comparator.comparing(WikiEntry::wikiEntrySq));
+    entries.sort(new Comparator<WikiEntry>() {
+      @Override
+      public int compare(WikiEntry first, WikiEntry second) {
+        return first.wikiEntrySq().compareTo(second.wikiEntrySq());
+      }
+    });
     return new WikiView(
         Map.of(
             "name", userName,
@@ -232,16 +261,18 @@ public class MemberFeatureService {
   }
 
   private Map<Long, InventoryItem> userInventory(Long userSq) {
-    return inventories.computeIfAbsent(userSq, ignored -> {
-      Map<Long, InventoryItem> values = new ConcurrentHashMap<>();
+    Map<Long, InventoryItem> values = inventories.get(userSq);
+    if (values == null) {
+      values = new ConcurrentHashMap<>();
       values.put(1L, new InventoryItem(1L, "고양이 사료 1.5kg", "PET_FOOD", 0.35, "bag", 35,
           "2027-01-31", "2026-07-25", "LOW", "PURCHASE", 0.86, Instant.now().toString()));
       values.put(2L, new InventoryItem(2L, "고양이 모래 6L", "PET_SUPPLY", 1.0, "pack", 50,
           null, "2026-07-28", "ACTIVE", "PURCHASE", 0.79, Instant.now().toString()));
       values.put(3L, new InventoryItem(3L, "세탁세제 리필 2.6L", "HOUSEHOLD", 0.2, "pack", 20,
           "2028-03-01", "2026-07-23", "LOW", "IMPORT", 0.91, Instant.now().toString()));
-      return values;
-    });
+      inventories.put(userSq, values);
+    }
+    return values;
   }
 
   private InventoryItem defaultInventoryItem(Long inventoryItemSq) {
@@ -250,14 +281,16 @@ public class MemberFeatureService {
   }
 
   private Map<Long, WikiEntry> userWiki(Long userSq) {
-    return wikiEntries.computeIfAbsent(userSq, ignored -> {
-      Map<Long, WikiEntry> values = new ConcurrentHashMap<>();
+    Map<Long, WikiEntry> values = wikiEntries.get(userSq);
+    if (values == null) {
+      values = new ConcurrentHashMap<>();
       values.put(1L, new WikiEntry(1L, "PET", "고양이 한 마리와 함께 생활", "EXPLICIT", "ONBOARDING",
           1.0, null, "ACTIVE", 1, Instant.now().toString()));
       values.put(2L, new WikiEntry(2L, "SHOPPING", "무료배송과 도착 예정일을 중요하게 판단", "INFERRED", "FEEDBACK",
           0.78, "2026-10-21", "ACTIVE", 1, Instant.now().toString()));
-      return values;
-    });
+      wikiEntries.put(userSq, values);
+    }
+    return values;
   }
 
   private WikiEntry defaultWikiEntry(Long wikiEntrySq) {
@@ -266,12 +299,17 @@ public class MemberFeatureService {
   }
 
   private List<NotificationItem> userNotifications(Long userSq) {
-    return notifications.computeIfAbsent(userSq, ignored -> new CopyOnWriteArrayList<>(List.of(
-        new NotificationItem(1L, "PRICE_DROP", 1L, "가격이 내려갔어요", "고양이 사료가 최근 평균보다 8% 저렴해요.",
-            "2026-07-21T10:00:00Z", "2026-07-21T10:00:03Z", null, false),
-        new NotificationItem(2L, "PURCHASE_DUE", 2L, "구매 시점이 다가왔어요", "고양이 모래 재고를 확인해 주세요.",
-            "2026-07-22T09:00:00Z", null, null, false)
-    )));
+    List<NotificationItem> values = notifications.get(userSq);
+    if (values == null) {
+      values = new CopyOnWriteArrayList<>(List.of(
+          new NotificationItem(1L, "PRICE_DROP", 1L, "가격이 내려갔어요", "고양이 사료가 최근 평균보다 8% 저렴해요.",
+              "2026-07-21T10:00:00Z", "2026-07-21T10:00:03Z", null, false),
+          new NotificationItem(2L, "PURCHASE_DUE", 2L, "구매 시점이 다가왔어요", "고양이 모래 재고를 확인해 주세요.",
+              "2026-07-22T09:00:00Z", null, null, false)
+      ));
+      notifications.put(userSq, values);
+    }
+    return values;
   }
 
   public record BriefingRefresh(String jobId, String traceId, String status, String requestedAt) {

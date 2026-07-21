@@ -17,7 +17,9 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -61,9 +63,11 @@ public class GoogleCalendarService {
       }
       List<CalendarEventEntity> events = calendarPersistenceService.upsertEvents(userSq, fetched);
       Map<String, ProductSelection> productCache = new LinkedHashMap<>();
-      events.stream().limit(MAX_ANALYZED_EVENTS).forEach(event ->
-          calendarPersistenceService.replaceSuggestions(
-              event, createSuggestions(event, productCache)));
+      int analyzedCount = Math.min(events.size(), MAX_ANALYZED_EVENTS);
+      for (int index = 0; index < analyzedCount; index++) {
+        CalendarEventEntity event = events.get(index);
+        calendarPersistenceService.replaceSuggestions(event, createSuggestions(event, productCache));
+      }
       return storedOrDemo(userSq, from, to, true, true, null);
     } catch (Exception error) {
       log.warn("Google Calendar sync failed for {}: {}", email, error.getMessage());
@@ -84,17 +88,19 @@ public class GoogleCalendarService {
       LocalDate from,
       LocalDate to
   ) {
-    Map<String, Object> response = RestClient.create("https://www.googleapis.com")
+    URI uri = UriComponentsBuilder
+        .fromUriString("https://www.googleapis.com/calendar/v3/calendars/{calendarId}/events")
+        .queryParam("timeMin", from.atStartOfDay(SEOUL).toOffsetDateTime().toString())
+        .queryParam("timeMax", to.plusDays(1).atStartOfDay(SEOUL).toOffsetDateTime().toString())
+        .queryParam("singleEvents", true)
+        .queryParam("orderBy", "startTime")
+        .queryParam("maxResults", 50)
+        .buildAndExpand(calendarId)
+        .toUri();
+    Map<String, Object> response = RestClient.create()
         .get()
-        .uri(builder -> builder
-            .path("/calendar/v3/calendars/{calendarId}/events")
-            .queryParam("timeMin", from.atStartOfDay(SEOUL).toOffsetDateTime().toString())
-            .queryParam("timeMax", to.plusDays(1).atStartOfDay(SEOUL).toOffsetDateTime().toString())
-            .queryParam("singleEvents", true)
-            .queryParam("orderBy", "startTime")
-            .queryParam("maxResults", 50)
-            .build(calendarId))
-        .headers(headers -> headers.setBearerAuth(client.getAccessToken().getTokenValue()))
+        .uri(uri)
+        .header("Authorization", "Bearer " + client.getAccessToken().getTokenValue())
         .retrieve()
         .body(Map.class);
     if (response == null || !(response.get("items") instanceof List<?> items)) {
@@ -141,8 +147,11 @@ public class GoogleCalendarService {
     List<CalendarSuggestionInput> suggestions = new ArrayList<>();
     for (PreparationTemplate template : preparationTemplates(
         event.getTitle(), event.getDescription(), event.getLocation())) {
-      ProductSelection selection = productCache.computeIfAbsent(
-          template.keyword(), this::searchProduct);
+      ProductSelection selection = productCache.get(template.keyword());
+      if (selection == null) {
+        selection = searchProduct(template.keyword());
+        productCache.put(template.keyword(), selection);
+      }
       suggestions.add(new CalendarSuggestionInput(
           template.keyword(),
           template.reason(),
@@ -179,16 +188,26 @@ public class GoogleCalendarService {
       add(templates, "스포츠 물병", "야외 운동 중 수분 보충", "HIGH");
       add(templates, "자외선 차단제", "야외 활동 피부 보호", "MEDIUM");
     }
-    return templates.values().stream().limit(3).toList();
+    List<PreparationTemplate> limitedTemplates = new ArrayList<>();
+    for (PreparationTemplate template : templates.values()) {
+      if (limitedTemplates.size() >= 3) {
+        break;
+      }
+      limitedTemplates.add(template);
+    }
+    return limitedTemplates;
   }
 
   private ProductSelection searchProduct(String keyword) {
     try {
       SearchResponse response = productService.search(keyword, 3);
-      ProductItem item = response.items().stream()
-          .filter(candidate -> "NAVER".equals(candidate.source()) || "ELEVENST".equals(candidate.source()))
-          .findFirst()
-          .orElse(null);
+      ProductItem item = null;
+      for (ProductItem candidate : response.items()) {
+        if ("NAVER".equals(candidate.source()) || "ELEVENST".equals(candidate.source())) {
+          item = candidate;
+          break;
+        }
+      }
       if (item == null) {
         return new ProductSelection(null, false);
       }
@@ -216,17 +235,19 @@ public class GoogleCalendarService {
       }
       return new CalendarResult(connected, false, demoSuggestions(), warning);
     }
-    return new CalendarResult(
-        connected,
-        live,
-        stored.stream().map(this::toSuggestion).toList(),
-        warning
-    );
+    List<CalendarSuggestion> suggestions = new ArrayList<>();
+    for (StoredCalendarEvent event : stored) {
+      suggestions.add(toSuggestion(event));
+    }
+    return new CalendarResult(connected, live, suggestions, warning);
   }
 
   private CalendarSuggestion toSuggestion(StoredCalendarEvent stored) {
     CalendarEventEntity event = stored.event();
-    List<PreparationItem> items = stored.suggestions().stream().map(this::toPreparationItem).toList();
+    List<PreparationItem> items = new ArrayList<>();
+    for (CalendarItemSuggestionEntity item : stored.suggestions()) {
+      items.add(toPreparationItem(item));
+    }
     return new CalendarSuggestion(
         event.getCalendarEventSq(),
         event.getExternalEventId(),
@@ -262,8 +283,12 @@ public class GoogleCalendarService {
     if (items.isEmpty()) {
       return "이 일정에서 별도의 선행구매 준비물이 발견되지 않았습니다.";
     }
-    String keywords = String.join(", ", items.stream().map(PreparationItem::keyword).toList());
-    return keywords + "은 " + items.getFirst().recommendedBuyBy() + "까지 구매를 권장합니다.";
+    List<String> keywords = new ArrayList<>();
+    for (PreparationItem item : items) {
+      keywords.add(item.keyword());
+    }
+    String keywordText = String.join(", ", keywords);
+    return keywordText + "은 " + items.getFirst().recommendedBuyBy() + "까지 구매를 권장합니다.";
   }
 
   private EventTime eventTime(Map<String, Object> start, Map<String, Object> end) {

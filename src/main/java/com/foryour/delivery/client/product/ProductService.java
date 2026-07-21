@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.HtmlUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
@@ -17,6 +18,7 @@ import org.xml.sax.InputSource;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.StringReader;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -25,9 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 import static com.foryour.delivery.client.product.ProductModels.ProductItem;
 import static com.foryour.delivery.client.product.ProductModels.ProductFeedItem;
@@ -53,18 +53,8 @@ public class ProductService {
     String keyword = StringUtils.hasText(query) ? query.trim() : "생활용품";
     int size = Math.max(1, Math.min(requestedSize, 40));
 
-    CompletableFuture<List<ProductItem>> naverFuture = CompletableFuture
-        .supplyAsync(() -> searchNaver(keyword, size))
-        .completeOnTimeout(List.of(), 2, TimeUnit.SECONDS)
-        .exceptionally(error -> List.of());
-    CompletableFuture<List<ProductItem>> elevenFuture = CompletableFuture
-        .supplyAsync(() -> searchElevenst(keyword, size))
-        .completeOnTimeout(List.of(), 2, TimeUnit.SECONDS)
-        .exceptionally(error -> List.of());
-
-    CompletableFuture.allOf(naverFuture, elevenFuture).join();
-    List<ProductItem> naverItems = naverFuture.join();
-    List<ProductItem> elevenItems = elevenFuture.join();
+    List<ProductItem> naverItems = searchNaver(keyword, size);
+    List<ProductItem> elevenItems = searchElevenst(keyword, size);
     collectSafely(naverItems);
     registerSafely(elevenItems);
     List<String> sources = new ArrayList<>();
@@ -72,28 +62,48 @@ public class ProductService {
     if (!elevenItems.isEmpty()) sources.add("ELEVENST");
 
     LinkedHashMap<String, ProductItem> merged = new LinkedHashMap<>();
-    naverItems.forEach(item -> merged.put(item.productSq(), item));
-    elevenItems.forEach(item -> merged.put(item.productSq(), item));
+    for (ProductItem item : naverItems) {
+      merged.put(item.productSq(), item);
+    }
+    for (ProductItem item : elevenItems) {
+      merged.put(item.productSq(), item);
+    }
 
     List<String> warnings = new ArrayList<>();
     if (naverItems.isEmpty()) warnings.add("네이버 상품 검색 결과를 불러오지 못했습니다.");
     if (elevenItems.isEmpty()) warnings.add("11번가 상품 검색 결과를 불러오지 못했습니다.");
 
     boolean live = !merged.isEmpty();
-    List<ProductItem> items = live
-        ? merged.values().stream().limit(size).toList()
-        : demoProducts(keyword).stream().limit(size).toList();
-    items.forEach(item -> productCache.put(item.productSq(), item));
+    List<ProductItem> sourceItems = live ? new ArrayList<>(merged.values()) : demoProducts(keyword);
+    List<ProductItem> items = new ArrayList<>();
+    for (ProductItem item : sourceItems) {
+      if (items.size() >= size) {
+        break;
+      }
+      items.add(item);
+    }
+    for (ProductItem item : items) {
+      productCache.put(item.productSq(), item);
+    }
 
     if (!live) {
       warnings.add("외부 상품 API가 연결되지 않아 서버 데모 데이터를 표시합니다.");
     }
-    List<String> categories = naverItems.stream()
-        .flatMap(item -> item.categories().stream())
-        .filter(StringUtils::hasText)
-        .distinct()
-        .limit(20)
-        .toList();
+    List<String> categories = new ArrayList<>();
+    for (ProductItem item : naverItems) {
+      for (String category : item.categories()) {
+        if (!StringUtils.hasText(category) || categories.contains(category)) {
+          continue;
+        }
+        categories.add(category);
+        if (categories.size() >= 20) {
+          break;
+        }
+      }
+      if (categories.size() >= 20) {
+        break;
+      }
+    }
     List<String> keywordSuggestions = categories.isEmpty() ? KEYWORDS : categories;
     return new SearchResponse(keyword, live, sources, warnings, keywordSuggestions, categories, items);
   }
@@ -115,8 +125,10 @@ public class ProductService {
         continue;
       }
       live = true;
-      productCatalogService.collectAndEnrich(naverItems)
-          .forEach(item -> merged.putIfAbsent(item.productSq(), item));
+      List<ProductFeedItem> feedItems = productCatalogService.collectAndEnrich(naverItems);
+      for (ProductFeedItem item : feedItems) {
+        merged.putIfAbsent(item.productSq(), item);
+      }
     }
 
     if (!live) {
@@ -129,7 +141,13 @@ public class ProductService {
     }
 
     List<ProductFeedItem> rankedItems = new ArrayList<>(merged.values());
-    List<ProductFeedItem> hotProducts = rankedItems.stream().limit(4).toList();
+    List<ProductFeedItem> hotProducts = new ArrayList<>();
+    for (ProductFeedItem item : rankedItems) {
+      if (hotProducts.size() >= 4) {
+        break;
+      }
+      hotProducts.add(item);
+    }
     List<ProductFeedItem> bestPriceDeals = selectBestPriceDeals(rankedItems);
     return new HomeFeedResponse(
         live,
@@ -150,10 +168,13 @@ public class ProductService {
   public ProductItem detail(String productSq) {
     ProductItem cached = productCache.get(productSq);
     if (cached != null) return cached;
-    return demoProducts("추천").stream()
-        .filter(item -> item.productSq().equals(productSq))
-        .findFirst()
-        .orElse(demoProducts("추천").getFirst());
+    List<ProductItem> demoItems = demoProducts("추천");
+    for (ProductItem item : demoItems) {
+      if (item.productSq().equals(productSq)) {
+        return item;
+      }
+    }
+    return demoItems.getFirst();
   }
 
   @SuppressWarnings("unchecked")
@@ -164,14 +185,17 @@ public class ProductService {
     }
 
     try {
-      Map<String, Object> response = RestClient.create("https://openapi.naver.com")
+      URI uri = UriComponentsBuilder
+          .fromUriString("https://openapi.naver.com/v1/search/shop.json")
+          .queryParam("query", keyword)
+          .queryParam("display", size)
+          .queryParam("sort", "sim")
+          .queryParam("exclude", "used:cbshop")
+          .build()
+          .toUri();
+      Map<String, Object> response = RestClient.create()
           .get()
-          .uri(builder -> builder.path("/v1/search/shop.json")
-              .queryParam("query", keyword)
-              .queryParam("display", size)
-              .queryParam("sort", "sim")
-              .queryParam("exclude", "used:cbshop")
-          .build())
+          .uri(uri)
           .header("X-Naver-Client-Id", config.getClientId())
           .header("X-Naver-Client-Secret", config.getClientSecret())
           .retrieve()
@@ -207,14 +231,17 @@ public class ProductService {
     if (!StringUtils.hasText(apiKey)) return List.of();
 
     try {
-      String xml = RestClient.create("https://openapi.11st.co.kr")
+      URI uri = UriComponentsBuilder
+          .fromUriString("https://openapi.11st.co.kr/openapi/OpenApiService.tmall")
+          .queryParam("key", apiKey)
+          .queryParam("apiCode", "ProductSearch")
+          .queryParam("keyword", keyword)
+          .queryParam("pageSize", size)
+          .build()
+          .toUri();
+      String xml = RestClient.create()
           .get()
-          .uri(builder -> builder.path("/openapi/OpenApiService.tmall")
-              .queryParam("key", apiKey)
-              .queryParam("apiCode", "ProductSearch")
-              .queryParam("keyword", keyword)
-              .queryParam("pageSize", size)
-              .build())
+          .uri(uri)
           .retrieve()
           .body(String.class);
       if (!StringUtils.hasText(xml)) return List.of();
@@ -312,20 +339,48 @@ public class ProductService {
   }
 
   private List<ProductFeedItem> selectBestPriceDeals(List<ProductFeedItem> items) {
-    List<ProductFeedItem> selected = new ArrayList<>(items.stream()
-        .filter(ProductFeedItem::historicalLow)
-        .sorted(Comparator.comparingInt(ProductFeedItem::rank))
-        .limit(3)
-        .toList());
+    List<ProductFeedItem> historicalLowItems = new ArrayList<>();
+    for (ProductFeedItem item : items) {
+      if (item.historicalLow()) {
+        historicalLowItems.add(item);
+      }
+    }
+    historicalLowItems.sort(new Comparator<ProductFeedItem>() {
+      @Override
+      public int compare(ProductFeedItem first, ProductFeedItem second) {
+        return Integer.compare(first.rank(), second.rank());
+      }
+    });
+    List<ProductFeedItem> selected = new ArrayList<>();
+    for (ProductFeedItem item : historicalLowItems) {
+      if (selected.size() >= 3) {
+        break;
+      }
+      selected.add(item);
+    }
     if (selected.size() < 3) {
-      Set<String> selectedIds = selected.stream()
-          .map(ProductFeedItem::productSq)
-          .collect(java.util.stream.Collectors.toSet());
-      items.stream()
-          .filter(item -> !selectedIds.contains(item.productSq()))
-          .sorted(Comparator.comparingLong(ProductFeedItem::price))
-          .limit(3 - selected.size())
-          .forEach(selected::add);
+      Set<String> selectedIds = new LinkedHashSet<>();
+      for (ProductFeedItem item : selected) {
+        selectedIds.add(item.productSq());
+      }
+      List<ProductFeedItem> remainingItems = new ArrayList<>();
+      for (ProductFeedItem item : items) {
+        if (!selectedIds.contains(item.productSq())) {
+          remainingItems.add(item);
+        }
+      }
+      remainingItems.sort(new Comparator<ProductFeedItem>() {
+        @Override
+        public int compare(ProductFeedItem first, ProductFeedItem second) {
+          return Long.compare(first.price(), second.price());
+        }
+      });
+      for (ProductFeedItem item : remainingItems) {
+        if (selected.size() >= 3) {
+          break;
+        }
+        selected.add(item);
+      }
     }
     return selected;
   }
@@ -369,7 +424,14 @@ public class ProductService {
     if (keywords.isEmpty()) {
       keywords.add("생활용품");
     }
-    return keywords.stream().limit(3).toList();
+    List<String> limitedKeywords = new ArrayList<>();
+    for (String keyword : keywords) {
+      if (limitedKeywords.size() >= 3) {
+        break;
+      }
+      limitedKeywords.add(keyword);
+    }
+    return limitedKeywords;
   }
 
   private void addInterestKeywords(String context, Set<String> keywords) {

@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.foryour.delivery.domain.enums.ErrorCode.BAD_REQUEST;
 import static com.foryour.delivery.domain.enums.ErrorCode.DATA_NOT_EXIST;
@@ -41,13 +42,18 @@ public class PersonalWikiService {
   public WikiView wiki(Long userSq, WikiEntryStatusCode status, String category, String query) {
     String normalizedCategory = normalizeOptional(category);
     String normalizedQuery = normalizeOptional(query);
-    List<WikiEntryView> entries = wikiEntryRepository
-        .findAllByUserSqAndStatusOrderByModifiedDateDesc(userSq, status)
-        .stream()
-        .filter(entry -> normalizedCategory == null || entry.getCategory().equals(normalizedCategory))
-        .filter(entry -> matches(entry, normalizedQuery))
-        .map(this::toView)
-        .toList();
+    List<WikiEntryEntity> foundEntries =
+        wikiEntryRepository.findAllByUserSqAndStatusOrderByModifiedDateDesc(userSq, status);
+    List<WikiEntryView> entries = new ArrayList<>();
+    for (WikiEntryEntity entry : foundEntries) {
+      if (normalizedCategory != null && !entry.getCategory().equals(normalizedCategory)) {
+        continue;
+      }
+      if (!matches(entry, normalizedQuery)) {
+        continue;
+      }
+      entries.add(toView(entry));
+    }
 
     return new WikiView(entries, entries.size(), status.name());
   }
@@ -64,9 +70,14 @@ public class PersonalWikiService {
     String maskedSummary = personalDataMasker.mask(summary.trim());
     String normalizedCategory = normalizeRequired(category);
     String normalizedKey = normalizeKey(entryKey);
-    WikiEntryEntity entry = wikiEntryRepository
-        .findByUserSqAndCategoryAndEntryKey(userSq, normalizedCategory, normalizedKey)
-        .orElseGet(WikiEntryEntity::new);
+    Optional<WikiEntryEntity> entryOptional =
+        wikiEntryRepository.findByUserSqAndCategoryAndEntryKey(userSq, normalizedCategory, normalizedKey);
+    WikiEntryEntity entry;
+    if (entryOptional.isPresent()) {
+      entry = entryOptional.get();
+    } else {
+      entry = new WikiEntryEntity();
+    }
 
     boolean created = entry.getWikiEntrySq() == null;
     if (created) {
@@ -182,8 +193,11 @@ public class PersonalWikiService {
 
   @Transactional
   public WikiEntryView confirm(Long userSq, Long wikiEntrySq, boolean approved) {
-    WikiEntryEntity entry = wikiEntryRepository.findByWikiEntrySqAndUserSq(wikiEntrySq, userSq)
-        .orElseThrow(() -> new APIException(DATA_NOT_EXIST));
+    Optional<WikiEntryEntity> entryOptional = wikiEntryRepository.findByWikiEntrySqAndUserSq(wikiEntrySq, userSq);
+    if (entryOptional.isEmpty()) {
+      throw new APIException(DATA_NOT_EXIST);
+    }
+    WikiEntryEntity entry = entryOptional.get();
     if (!WikiEntryStatusCode.PENDING_CONFIRMATION.equals(entry.getStatus())) {
       throw new APIException(BAD_REQUEST);
     }
@@ -313,8 +327,13 @@ public class PersonalWikiService {
   }
 
   private boolean containsRestricted(String text) {
-    return RESTRICTED_KEYWORDS.stream()
-        .anyMatch(keyword -> text.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT)));
+    String normalizedText = text.toLowerCase(Locale.ROOT);
+    for (String keyword : RESTRICTED_KEYWORDS) {
+      if (normalizedText.contains(keyword.toLowerCase(Locale.ROOT))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private boolean containsAny(String text, String... keywords) {

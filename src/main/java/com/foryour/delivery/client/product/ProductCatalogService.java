@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -65,7 +66,13 @@ public class ProductCatalogService {
 
   private ProductEntity upsertProduct(ProductItem item) {
     String productKey = item.source() + ":" + item.providerCode();
-    ProductEntity product = productRepository.findByProductKey(productKey).orElseGet(ProductEntity::new);
+    Optional<ProductEntity> productOptional = productRepository.findByProductKey(productKey);
+    ProductEntity product;
+    if (productOptional.isPresent()) {
+      product = productOptional.get();
+    } else {
+      product = new ProductEntity();
+    }
     product.setProductKey(productKey);
     product.setName(item.name());
     product.setNormalizedName(normalizeName(item.name()));
@@ -81,9 +88,14 @@ public class ProductCatalogService {
       int rank,
       LocalDateTime collectedAt
   ) {
-    ProductOfferEntity offer = productOfferRepository
-        .findByProviderAndExternalProductId(item.source(), item.providerCode())
-        .orElseGet(ProductOfferEntity::new);
+    Optional<ProductOfferEntity> offerOptional =
+        productOfferRepository.findByProviderAndExternalProductId(item.source(), item.providerCode());
+    ProductOfferEntity offer;
+    if (offerOptional.isPresent()) {
+      offer = offerOptional.get();
+    } else {
+      offer = new ProductOfferEntity();
+    }
     offer.setProductSq(product.getProductSq());
     offer.setProvider(item.source());
     offer.setExternalProductId(item.providerCode());

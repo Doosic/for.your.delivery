@@ -16,6 +16,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import static com.foryour.delivery.domain.enums.ErrorCode.DATA_NOT_EXIST;
@@ -60,14 +61,18 @@ public class UserServiceImpl implements UserService {
   @Transactional
   public UserResponseVO findOrCreateGoogleUser(String email, String name) {
     String normalizedEmail = email.trim().toLowerCase();
-    UserEntity user = userRepository.findByEmail(normalizedEmail).orElseGet(() -> {
+    Optional<UserEntity> userOptional = userRepository.findByEmail(normalizedEmail);
+    UserEntity user;
+    if (userOptional.isPresent()) {
+      user = userOptional.get();
+    } else {
       UserEntity created = new UserEntity();
       created.setEmail(normalizedEmail);
       created.setName(name == null || name.isBlank() ? normalizedEmail : name.trim());
       created.setPassword(bCryptPasswordEncoder.encode(UUID.randomUUID().toString()));
       created.setStatus(UserStatusCode.USE);
-      return userRepository.save(created);
-    });
+      user = userRepository.save(created);
+    }
 
     if (!UserStatusCode.USE.equals(user.getStatus())) {
       throw new AccountException(LOCKED_ACCOUNT);
@@ -78,8 +83,11 @@ public class UserServiceImpl implements UserService {
   @Override
   @Transactional(readOnly = true)
   public UserEntity getActiveUserByEmail(String email) {
-    UserEntity user = userRepository.findByEmail(email.trim().toLowerCase())
-        .orElseThrow(() -> new AccountException(DATA_NOT_EXIST));
+    Optional<UserEntity> userOptional = userRepository.findByEmail(email.trim().toLowerCase());
+    if (userOptional.isEmpty()) {
+      throw new AccountException(DATA_NOT_EXIST);
+    }
+    UserEntity user = userOptional.get();
 
     if (UserStatusCode.LOCK.equals(user.getStatus()) || UserStatusCode.DELETE.equals(user.getStatus())) {
       throw new AccountException(LOCKED_ACCOUNT);
@@ -105,8 +113,11 @@ public class UserServiceImpl implements UserService {
 
   @Override
   public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-    UserEntity user = userRepository.findByEmail(username.trim().toLowerCase())
-        .orElseThrow(() -> new UsernameNotFoundException("user not found"));
+    Optional<UserEntity> userOptional = userRepository.findByEmail(username.trim().toLowerCase());
+    if (userOptional.isEmpty()) {
+      throw new UsernameNotFoundException("user not found");
+    }
+    UserEntity user = userOptional.get();
 
     boolean enabled = UserStatusCode.USE.equals(user.getStatus());
 
