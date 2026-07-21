@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'fub-user'
 const LEGACY_STORAGE_KEY = 'prebuy-user'
@@ -23,16 +23,16 @@ export const useAuth = () => {
     return () => window.removeEventListener(AUTH_EVENT, sync)
   }, [])
 
-  const saveUser = (userInfo) => {
+  const saveUser = useCallback((userInfo) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userInfo))
     window.dispatchEvent(new Event(AUTH_EVENT))
-  }
+  }, [])
 
-  const clearUser = () => {
+  const clearUser = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(LEGACY_STORAGE_KEY)
     window.dispatchEvent(new Event(AUTH_EVENT))
-  }
+  }, [])
 
   return {
     user,

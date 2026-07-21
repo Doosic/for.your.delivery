@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class AppController {
 
-  @RequestMapping(value = {"/login", "/app/**"})
+  @RequestMapping(value = {"/", "/login", "/signup", "/app/**"})
   public ModelAndView app(HttpServletRequest request) {
     ModelAndView mav = new ModelAndView();
     mav.addObject("contextPath", request.getContextPath());

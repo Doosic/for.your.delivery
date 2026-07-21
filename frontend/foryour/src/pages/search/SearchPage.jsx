@@ -96,7 +96,7 @@ function SearchPage() {
         {results.map((product) => (
           <Link
             key={product.productSq}
-            to={`/products/${product.productSq}`}
+            to={`/app/products/${product.productSq}`}
             onClick={() => productService.setSelectedProduct(product)}
             className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:border-cyan-300 hover:shadow"
           >

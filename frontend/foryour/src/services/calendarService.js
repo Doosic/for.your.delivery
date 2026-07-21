@@ -17,7 +17,12 @@ export const calendarService = {
         to: '2026-08-20',
       })
       const body = response.body ?? response.data
-      return { suggestions: (body.suggestions ?? []).map(normalizeSuggestion), live: true }
+      return {
+        suggestions: (body.suggestions ?? []).map(normalizeSuggestion),
+        connected: body.connected ?? true,
+        live: body.live ?? true,
+        warning: body.warning,
+      }
     } catch {
       return { suggestions: calendarMock.suggestions, live: false }
     }

@@ -37,10 +37,21 @@ export const authService = () => {
     return assertSuccess(response, response.msg || 'fail')
   }
 
+  const me = async () => {
+    const response = await api.GET('/delivery/wb/user/me')
+    return assertSuccess(response, response.msg || '사용자 정보를 불러오지 못했습니다.')
+  }
+
+  const loginWithGoogle = () => {
+    window.location.assign('/delivery/oauth2/authorization/google')
+  }
+
   return {
     login,
     signup,
     logout,
+    me,
+    loginWithGoogle,
     getCryptoPublicKey,
   }
 }

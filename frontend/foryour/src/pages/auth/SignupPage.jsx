@@ -29,7 +29,7 @@ function SignupPage() {
       setIsSubmitting(true)
       await authService().signup(form)
       alert.alertSuccess('알림', '회원가입이 완료되었습니다.')
-      navigate('/login')
+      navigate('/app/login')
     } catch (error) {
       alert.alertWarning('알림', error.message)
     } finally {
@@ -102,7 +102,7 @@ function SignupPage() {
 
       <p className="mt-6 text-center text-sm text-slate-600">
         이미 계정이 있나요?{' '}
-        <Link to="/login" className="font-semibold text-cyan-700 hover:text-cyan-800">
+        <Link to="/app/login" className="font-semibold text-cyan-700 hover:text-cyan-800">
           로그인
         </Link>
       </p>

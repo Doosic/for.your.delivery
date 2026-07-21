@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 public class CProperties {
 
   private Jwt jwt;
+  private String frontendBaseUrl;
+  private External external = new External();
 
   @Data
   public static class Jwt {
@@ -19,5 +21,21 @@ public class CProperties {
     private Integer refreshTimeoutMin;
     private String secret;
   }
-}
 
+  @Data
+  public static class External {
+    private Naver naver = new Naver();
+    private Elevenst elevenst = new Elevenst();
+  }
+
+  @Data
+  public static class Naver {
+    private String clientId;
+    private String clientSecret;
+  }
+
+  @Data
+  public static class Elevenst {
+    private String apiKey;
+  }
+}

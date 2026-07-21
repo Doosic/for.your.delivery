@@ -36,12 +36,21 @@ public class JwtRequestFilter extends OncePerRequestFilter {
   private AntPathMatcher pathMatcher = new AntPathMatcher();
 
   private Set<String> skipUrls = new HashSet<>(Arrays.asList(
+      "/",
       "/login",
       "/logout",
       "/login/**",
+      "/signup",
       "/app/**",
       "/resources/**",
-      "/wp/**"
+      "/oauth2/**",
+      "/error",
+      "/wp/user/crypto-public-key",
+      "/wp/user/signup",
+      "/wp/user/login",
+      "/wp/products",
+      "/wp/products/**",
+      "/wp/event"
   ));
 
   @Override
@@ -69,7 +78,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
     String userEmail = null;
 
-    if(accessToken != null && refreshToken != null && jwtTokenProvider.validateToken(accessToken)){
+    if(accessToken != null && refreshToken != null){
       if(jwtTokenProvider.validateToken(accessToken)){
         userEmail = jwtTokenProvider.getUsernameFromToken(accessToken);
       }else if(jwtTokenProvider.validateToken(refreshToken)){
@@ -101,6 +110,8 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             jwtToken.getRefreshToken(),
             cProperties.getJwt().getRefreshHeader(),
             cProperties.getJwt().getAccessTimeoutMin());
+
+        accessToken = jwtToken.getAccessToken();
       }
     }
 

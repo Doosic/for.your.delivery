@@ -12,6 +12,7 @@ const SOURCE_ICON_BG = {
   COUPANG: 'bg-rose-100',
   GMAIL: 'bg-orange-100',
   GOOGLE_CALENDAR: 'bg-emerald-100',
+  CODEF: 'bg-violet-100',
   FILE: 'bg-cyan-100',
 }
 
@@ -29,7 +30,8 @@ function ConnectionsPage() {
 
   const toggleConnection = async (target) => {
     if (!target.connected) {
-      await importService.connect(target.source)
+      const result = await importService.connect(target.source)
+      if (result.redirecting || result.requiresConfiguration) return
     }
     setConnections((previous) =>
       previous.map((connection) =>
@@ -51,7 +53,7 @@ function ConnectionsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <header className="flex items-center gap-2">
-        <Link to="/imports" className="text-slate-500 transition hover:text-slate-900" aria-label="뒤로">
+        <Link to="/app/imports" className="text-slate-500 transition hover:text-slate-900" aria-label="뒤로">
           <ChevronLeft size={20} aria-hidden="true" />
         </Link>
         <div>

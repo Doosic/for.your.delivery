@@ -12,6 +12,8 @@ public interface UserService extends UserDetailsService {
 
   UserResponseVO signup(UserSignupRequest request);
 
+  UserResponseVO findOrCreateGoogleUser(String email, String name);
+
   UserEntity getActiveUserByEmail(String email);
 
   void logout(HttpServletResponse response);

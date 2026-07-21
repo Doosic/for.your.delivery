@@ -12,9 +12,10 @@ const SOURCE_BADGE = {
   COUPANG: 'bg-rose-50 text-rose-700',
   NAVER: 'bg-emerald-50 text-emerald-700',
   GMAIL: 'bg-orange-50 text-orange-600',
+  FILE: 'bg-cyan-50 text-cyan-700',
 }
 
-const SOURCE_LABEL = { COUPANG: '쿠팡', NAVER: '네이버', GMAIL: 'Gmail' }
+const SOURCE_LABEL = { COUPANG: '쿠팡', NAVER: '네이버', GMAIL: 'Gmail', FILE: '파일' }
 
 function ImportListPage() {
   const alert = useAlert()
@@ -73,7 +74,7 @@ function ImportListPage() {
           </div>
         </div>
         <Link
-          to="/imports/connections"
+          to="/app/imports/connections"
           className="flex h-9 items-center gap-1.5 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
         >
           <Settings size={14} aria-hidden="true" /> 소스 관리
@@ -121,7 +122,7 @@ function ImportListPage() {
         </div>
 
         <Link
-          to="/calendar"
+          to="/app/calendar"
           className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-cyan-300 hover:shadow"
         >
           <p className="flex items-center gap-2 text-sm font-semibold">

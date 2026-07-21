@@ -29,6 +29,23 @@ public class JwtTokenProvider {
 
   private final CProperties cProperties;
 
+  public void issueCookies(UserResponseVO user, HttpServletResponse response) {
+    Map<String, Object> claims = Map.of(
+        "userSq", user.getUserSq(),
+        "email", user.getEmail(),
+        "name", user.getName(),
+        "status", user.getStatus().name()
+    );
+    Token token = generateTokenHS512(
+        user.getEmail(),
+        cProperties.getJwt().getAccessTimeoutMin(),
+        cProperties.getJwt().getSecret(),
+        claims
+    );
+    createAccessCookie(response, token.getAccessToken(), cProperties.getJwt().getAccessHeader(), cProperties.getJwt().getAccessTimeoutMin());
+    createRefreshCookie(response, token.getRefreshToken(), cProperties.getJwt().getRefreshHeader(), cProperties.getJwt().getRefreshTimeoutMin());
+  }
+
   public Token generateTokenHS512(
       String adminId,
       Integer timeOutMin,

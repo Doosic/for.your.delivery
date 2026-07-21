@@ -72,7 +72,7 @@ function BriefingPage() {
 
       <div className="rounded-lg bg-cyan-50 p-4 text-sm text-slate-600">
         구매 데이터가 쌓일수록 브리핑이 정확해져요.{' '}
-        <Link to="/imports" className="font-semibold text-cyan-800 hover:underline">
+        <Link to="/app/imports" className="font-semibold text-cyan-800 hover:underline">
           구매목록 가져오기 →
         </Link>
       </div>
