@@ -34,7 +34,7 @@ function LoginPage() {
       setIsSubmitting(true)
       const user = await authService().login(email, password)
       saveUser(user)
-      await alert.alertSuccess('알림', '로그인되었습니다.')
+      // await alert.alertSuccess('알림', '로그인되었습니다.')
       navigate('/app/main')
     } catch (error) {
       alert.alertWarning('알림', error.message)

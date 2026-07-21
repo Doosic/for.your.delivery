@@ -73,7 +73,7 @@ export default defineConfig(({ mode }) => {
       host: true,
       proxy: {
         '/delivery/': {
-          target: 'http://localhost:8920',
+          target: 'http://localhost:30100',
           changeOrigin: true,
           secure: false,
         },

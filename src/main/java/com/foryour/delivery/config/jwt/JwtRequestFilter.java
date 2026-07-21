@@ -68,6 +68,11 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         .findFirst().map(Cookie::getValue)
         .orElse(null);
 
+    if(accessToken == null && refreshToken == null){
+      this.unathorizedFail(response);
+      return;
+    }
+
     String userEmail = null;
 
     if(accessToken != null && refreshToken != null){

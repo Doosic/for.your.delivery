@@ -111,22 +111,29 @@ public class JwtTokenProvider {
       HttpServletResponse response,
       String accessHeader
   ){
-    Cookie cookieAccess = new Cookie(accessHeader, null);
-    cookieAccess.setPath("/");
-    cookieAccess.setMaxAge(0);
-    cookieAccess.setHttpOnly(true);
-    response.addCookie(cookieAccess);
+    expireCookie(response, accessHeader, "/");
+    expireCookie(response, accessHeader, "/delivery");
   }
 
   public void resetRefreshCookie(
       HttpServletResponse response,
       String refreshHeader
   ){
-    Cookie cookieRefresh = new Cookie(refreshHeader, null);
-    cookieRefresh.setPath("/");
-    cookieRefresh.setMaxAge(0);
-    cookieRefresh.setHttpOnly(true);
-    response.addCookie(cookieRefresh);
+    expireCookie(response, refreshHeader, "/");
+    expireCookie(response, refreshHeader, "/delivery");
+  }
+
+  public void resetSessionCookie(HttpServletResponse response) {
+    expireCookie(response, "JSESSIONID", "/");
+    expireCookie(response, "JSESSIONID", "/delivery");
+  }
+
+  private void expireCookie(HttpServletResponse response, String name, String path) {
+    Cookie cookie = new Cookie(name, null);
+    cookie.setPath(path);
+    cookie.setMaxAge(0);
+    cookie.setHttpOnly(true);
+    response.addCookie(cookie);
   }
 
   public String getUsernameFromToken(String token) {

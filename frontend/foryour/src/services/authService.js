@@ -32,7 +32,9 @@ export const authService = () => {
   }
 
   const logout = async () => {
-    const response = await api.GET('/delivery/wb/user/logout')
+    const response = await api.GET('/delivery/wb/user/logout', undefined, {
+      skipUnauthorizedRedirect: true,
+    })
     return assertSuccess(response, response.msg || 'fail')
   }
 

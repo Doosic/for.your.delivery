@@ -8,10 +8,13 @@ import com.foryour.delivery.common.CProperties;
 import com.foryour.delivery.config.jwt.JwtTokenProvider;
 import com.foryour.delivery.config.jwt.Token;
 import com.foryour.delivery.domain.entity.UserEntity;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -101,9 +104,17 @@ public class UserController extends BaseController {
   }
 
   @GetMapping("/wb/user/logout")
-  public APIDataResponse<Void> logout(HttpServletResponse response) {
+  public APIDataResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
     jwtTokenProvider.resetAccessCookie(response, cProperties.getJwt().getAccessHeader());
     jwtTokenProvider.resetRefreshCookie(response, cProperties.getJwt().getRefreshHeader());
+    jwtTokenProvider.resetSessionCookie(response);
+    SecurityContextHolder.clearContext();
+
+    HttpSession session = request.getSession(false);
+    if (session != null) {
+      session.invalidate();
+    }
+
     return APIDataResponse.of(null);
   }
 }
