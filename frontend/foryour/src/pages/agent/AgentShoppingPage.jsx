@@ -69,7 +69,7 @@ function AgentShoppingPage() {
           </p>
           <button
             type="button"
-            onClick={() => navigate('/chat')}
+            onClick={() => navigate('/app/chat')}
             className="mt-4 flex h-11 items-center justify-center gap-2 rounded-md bg-cyan-700 text-sm font-semibold text-white transition hover:bg-cyan-800"
           >
             <MessageCircle size={16} aria-hidden="true" />

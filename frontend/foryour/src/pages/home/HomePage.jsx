@@ -30,7 +30,7 @@ function HomePage() {
       {/* 검색바 */}
       <button
         type="button"
-        onClick={() => navigate('/search')}
+        onClick={() => navigate('/app/search')}
         className="flex h-12 w-full items-center rounded-lg border border-slate-300 bg-white px-4 text-left text-sm text-slate-400 shadow-sm transition hover:border-cyan-500"
       >
         검색어를 입력하세요 — 예: 고양이 사료
@@ -95,7 +95,7 @@ function HomePage() {
           </div>
           <button
             type="button"
-            onClick={() => navigate('/agent')}
+            onClick={() => navigate('/app/agent')}
             className="mt-4 h-10 rounded-md border border-cyan-200 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50"
           >
             Agent 쇼핑 열기
