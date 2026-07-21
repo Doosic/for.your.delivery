@@ -19,7 +19,7 @@ function App() {
     <Routes>
       {/* 쇼핑몰 메인 — 로그인 강제 없음, 전 화면 게스트 접근 가능 */}
       <Route path="/" element={<MainLayout />}>
-        <Route index element={<HomePage />} />
+        <Route path="/app/main" index element={<HomePage />} />
         <Route path="/app/search" element={<SearchPage />} />
         <Route path="/app/products/:productSq" element={<ProductDetailPage />} />
         <Route path="/app/briefing" element={<BriefingPage />} />
