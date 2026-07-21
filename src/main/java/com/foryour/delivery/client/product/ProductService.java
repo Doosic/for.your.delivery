@@ -15,6 +15,7 @@ import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import static com.foryour.delivery.client.product.ProductModels.ProductItem;
+import static com.foryour.delivery.client.product.ProductModels.HomeFeedResponse;
 import static com.foryour.delivery.client.product.ProductModels.SearchResponse;
 
 @Slf4j
@@ -75,6 +77,20 @@ public class ProductService {
       warnings.add("외부 상품 API가 연결되지 않아 서버 데모 데이터를 표시합니다.");
     }
     return new SearchResponse(keyword, live, sources, warnings, KEYWORDS, items);
+  }
+
+  public HomeFeedResponse homeFeed() {
+    SearchResponse response = search("고양이 사료", 8);
+    List<ProductItem> items = response.items() == null ? List.of() : response.items();
+    List<ProductItem> hotProducts = items.stream()
+        .limit(4)
+        .toList();
+    List<ProductItem> bestPriceDeals = items.stream()
+        .sorted(Comparator.comparingLong(ProductItem::price))
+        .limit(3)
+        .toList();
+
+    return new HomeFeedResponse(response.live(), response.warnings(), hotProducts, bestPriceDeals);
   }
 
   public ProductItem detail(String productSq) {

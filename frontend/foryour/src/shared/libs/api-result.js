@@ -8,6 +8,10 @@ export const assertSuccess = (response, message = 'fail') => {
   return response
 }
 
+export const assertSuccessBody = (response, message = 'fail') => {
+  return assertSuccess(response, message).body
+}
+
 export const isDuplicateResult = (response) => {
   return String(response.status) === constants.RESULT_FAIL_DUPLICATE
 }

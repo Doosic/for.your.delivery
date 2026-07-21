@@ -22,11 +22,13 @@ public class CalendarController extends BaseController {
 
   @GetMapping("/wp/calendar/purchase-suggestions")
   public APIDataResponse<GoogleCalendarService.CalendarResult> suggestions(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
   ) {
+    LocalDate start = from == null ? LocalDate.now() : from;
+    LocalDate end = to == null ? start.plusDays(30) : to;
     return APIDataResponse.of(googleCalendarService.suggestions(
-        getSessionInfo().getEmail(), from, to, List.of("primary")
+        getSessionInfo().getEmail(), start, end, List.of("primary")
     ));
   }
 
@@ -35,8 +37,10 @@ public class CalendarController extends BaseController {
     List<String> calendarIds = request.calendarIds() == null || request.calendarIds().isEmpty()
         ? List.of("primary")
         : request.calendarIds();
+    LocalDate start = request.from() == null ? LocalDate.now() : request.from();
+    LocalDate end = request.to() == null ? start.plusDays(30) : request.to();
     GoogleCalendarService.CalendarResult result = googleCalendarService.suggestions(
-        getSessionInfo().getEmail(), request.from(), request.to(), calendarIds
+        getSessionInfo().getEmail(), start, end, calendarIds
     );
     return APIDataResponse.of(Map.of(
         "connected", result.connected(),

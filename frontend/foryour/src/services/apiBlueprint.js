@@ -3,6 +3,7 @@ export const API_ENDPOINTS = {
   authLogin: 'POST /wp/user/login',
   authSignup: 'POST /wp/user/signup',
   authLogout: 'GET /wb/user/logout',
+  homeFeed: 'GET /wp/home/feed',
   productSearch: 'GET /wp/products',
   productDetail: 'GET /wp/products/{productSq}',
   briefingToday: 'GET /wp/briefings/today',

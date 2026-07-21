@@ -28,4 +28,12 @@ public final class ProductModels {
       List<ProductItem> items
   ) {
   }
+
+  public record HomeFeedResponse(
+      boolean live,
+      List<String> warnings,
+      List<ProductItem> hotProducts,
+      List<ProductItem> bestPriceDeals
+  ) {
+  }
 }
