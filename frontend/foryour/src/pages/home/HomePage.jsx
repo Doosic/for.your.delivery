@@ -85,20 +85,19 @@ function HomePage() {
           )}
         </div>
 
-        {/* Agent 쇼핑 티저 */}
         <div className="flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <div>
-            <h2 className="text-base font-semibold">Agent 쇼핑</h2>
+            <h2 className="text-base font-semibold">AI 브리핑</h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              재구매 시점 추적, 가격 하락 알림, 일정 준비까지 AI가 대신 쇼핑해요.
+              오늘 살 것, 기다릴 것, 일정 준비를 대화로 이어서 확인할 수 있어요.
             </p>
           </div>
           <button
             type="button"
-            onClick={() => navigate('/app/agent')}
+            onClick={() => navigate('/app/briefing')}
             className="mt-4 h-10 rounded-md border border-cyan-200 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50"
           >
-            Agent 쇼핑 열기
+            AI 브리핑 열기
           </button>
         </div>
       </section>
