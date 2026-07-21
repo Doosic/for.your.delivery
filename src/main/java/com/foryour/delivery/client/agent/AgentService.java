@@ -114,7 +114,7 @@ public class AgentService {
         userMessage.getAgentMessageSq(),
         route,
         normalizedText,
-        personalDataMasker.mask(session.getContextJson()),
+        persistedSessionContext(userSq, sessionSq, session.getContextJson()),
         maskedContext
     );
 
@@ -196,6 +196,22 @@ public class AgentService {
 
   private AgentTypeCode route(String text) {
     String normalized = text.toLowerCase(Locale.ROOT);
+    boolean commerceIntent = containsAny(
+        normalized,
+        "구매", "주문", "상품", "제품", "쇼핑", "가격", "최저가", "최적가", "할인",
+        "가격하락", "구매 시점", "언제 주문", "언제 사", "배송", "도착", "재고", "판매처",
+        "사료", "간식", "모래", "용품", "식품", "세제", "커피", "의류", "옷", "가전",
+        "가구", "화장품", "장난감", "장보기", "사야", "살까", "브리핑",
+        "재구매", "샀던", "다시 사", "다시 살",
+        "buy", "order", "product", "shopping", "price", "delivery"
+    );
+    boolean preparationIntent = containsAny(
+        normalized, "일정", "캘린더", "여행", "캠핑", "행사", "모임", "calendar")
+        && containsAny(normalized, "준비", "필요", "구매", "주문", "사야", "상품", "제품", "용품");
+    boolean shoppingIntent = commerceIntent || preparationIntent;
+    if (!shoppingIntent) {
+      return AgentTypeCode.CONVERSATION_ORCHESTRATOR;
+    }
     if (containsAny(normalized, "위키", "기억해", "기억해줘", "내 정보", "내 취향", "remember")) {
       return AgentTypeCode.PERSONAL_WIKI;
     }
@@ -215,7 +231,7 @@ public class AgentService {
     if (containsAny(normalized, "구매", "상품", "쇼핑", "추천", "브리핑", "사료", "간식", "모래", "용품")) {
       return AgentTypeCode.BRIEFING_SHOPPING;
     }
-    return AgentTypeCode.CONVERSATION_ORCHESTRATOR;
+    return AgentTypeCode.BRIEFING_SHOPPING;
   }
 
   private boolean containsAny(String text, String... keywords) {
@@ -250,7 +266,7 @@ public class AgentService {
       case PERSONAL_WIKI:
         return "개인 위키 요청을 확인했어요.";
       case CONVERSATION_ORCHESTRATOR:
-        return "요청을 확인했어요. 필요한 정보를 이어서 알려주세요.";
+        return "이 채팅은 상품 추천, 가격 비교, 주문 시점과 배송 준비만 도와드릴 수 있어요. 찾는 물품이나 준비할 일정을 알려주세요.";
       default:
         throw new IllegalArgumentException("Unsupported route: " + route);
     }
@@ -265,6 +281,23 @@ public class AgentService {
       Map<String, Object> requestContext
   ) {
     AgentReply deterministicReply;
+    if (AgentTypeCode.CONVERSATION_ORCHESTRATOR.equals(route)) {
+      return new AgentReply(
+          AgentMessageTypeCode.TEXT,
+          responseText(route, AgentContext.empty()),
+          Map.of(
+              "route", route.name(),
+              "status", "REJECTED_SCOPE",
+              "dataMode", "NONE",
+              "recommendations", List.of(),
+              "generationMode", "RULE_BASED"
+          ),
+          List.of(),
+          null,
+          "RULE_BASED",
+          "scope-guard-v1"
+      );
+    }
     if (AgentTypeCode.PERSONAL_WIKI.equals(route)) {
       WikiAgentReply reply = personalWikiService.respondToChat(userSq, messageSq, text);
       Map<String, Object> payload = new HashMap<>(reply.payload());
@@ -273,7 +306,7 @@ public class AgentService {
       payload.put("dataMode", "PERSISTED");
       deterministicReply = new AgentReply(
           reply.messageType(), reply.text(), payload, reply.actions(), reply.candidateWikiEntrySq(),
-          "RULE_BASED", "v1.1");
+          "RULE_BASED", "v2.2");
       return enhanceReply(route, text, sessionContext, requestContext, deterministicReply);
     }
 
@@ -306,7 +339,7 @@ public class AgentService {
         actions,
         candidateSq,
         "RULE_BASED",
-        "v2.1"
+        "v2.2"
     );
     return enhanceReply(route, text, sessionContext, requestContext, deterministicReply);
   }
@@ -348,7 +381,7 @@ public class AgentService {
               deterministicReply.actions(),
               deterministicReply.candidateWikiEntrySq(),
               generated.model(),
-              "openai-briefing-v2.1"
+              "openai-briefing-v2.2"
           );
         })
         .orElseGet(() -> {
@@ -388,7 +421,7 @@ public class AgentService {
         "route", route.name()
     ));
     run.setModelName("RULE_BASED");
-    run.setPromptVersion("v2.1");
+    run.setPromptVersion("v2.2");
     run.setStartedAt(startedAt);
     run.setTraceId(traceId);
     return agentRunRepository.save(run);
@@ -405,9 +438,30 @@ public class AgentService {
         "code", "KEYWORD_ROUTE",
         "description", "메시지 키워드 정책에 따라 담당 Agent를 선택"
     )));
-    decision.setEvidenceJson(Map.of("policyVersion", "v1.1"));
+    decision.setEvidenceJson(Map.of("policyVersion", "shopping-scope-v1"));
     decision.setStatus(AgentDecisionStatusCode.ACTIVE);
     agentDecisionRepository.save(decision);
+  }
+
+  private Map<String, Object> persistedSessionContext(
+      Long userSq,
+      Long sessionSq,
+      Map<String, Object> sessionContext
+  ) {
+    Map<String, Object> persisted = new LinkedHashMap<>(personalDataMasker.mask(sessionContext));
+    List<AgentMessageEntity> messages = agentMessageRepository
+        .findAllByAgentSessionSqAndUserSqOrderByAgentMessageSqAsc(sessionSq, userSq);
+    int fromIndex = Math.max(0, messages.size() - 8);
+    List<Map<String, Object>> recentMessages = new java.util.ArrayList<>();
+    for (AgentMessageEntity message : messages.subList(fromIndex, messages.size())) {
+      recentMessages.add(Map.of(
+          "role", message.getRole().name(),
+          "text", personalDataMasker.mask(message.getContent())
+      ));
+    }
+    persisted.put("recentMessages", recentMessages);
+    persisted.put("historySource", "USER_SCOPED_AGENT_MESSAGE_DB");
+    return persisted;
   }
 
   private void saveWikiDecision(AgentRunEntity run, Long wikiEntrySq) {

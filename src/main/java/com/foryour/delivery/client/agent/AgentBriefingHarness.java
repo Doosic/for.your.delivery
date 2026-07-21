@@ -7,6 +7,8 @@ import com.foryour.delivery.client.calendar.GoogleCalendarService.SuggestedProdu
 import com.foryour.delivery.client.product.ProductModels.HomeFeedResponse;
 import com.foryour.delivery.client.product.ProductModels.ImageSources;
 import com.foryour.delivery.client.product.ProductModels.ProductFeedItem;
+import com.foryour.delivery.client.product.ProductModels.ProductItem;
+import com.foryour.delivery.client.product.ProductModels.SearchResponse;
 import com.foryour.delivery.client.product.ProductService;
 import com.foryour.delivery.domain.entity.ProductOfferEntity;
 import com.foryour.delivery.domain.entity.ProductPriceHistoryEntity;
@@ -23,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -150,22 +153,42 @@ public class AgentBriefingHarness {
   public AgentContext contextFor(Long userSq, AgentTypeCode route, String query) {
     AgentContext context = contextFor(userSq, route);
     List<BriefingItem> focused = focusRecommendations(context.recommendations(), query);
+    boolean targetedSearch = false;
+    String productQuery = productQuery(query);
+    if (focused.isEmpty() && List.of(
+        AgentTypeCode.BRIEFING_SHOPPING,
+        AgentTypeCode.PRICE_INTELLIGENCE
+    ).contains(route)) {
+      SearchResponse search = productService.searchForUser(userSq, productQuery, 6, "LOW_PRICE");
+      focused = searchItems(search == null ? List.of() : search.items(), LocalDate.now());
+      targetedSearch = !focused.isEmpty();
+    }
+    Map<String, Object> evidencePolicy = new LinkedHashMap<>(context.evidencePolicy());
+    if (context.briefing() != null) {
+      evidencePolicy.put("recommendationBasis", context.briefing().recommendationBasis());
+      evidencePolicy.put("interestKeywords", context.briefing().interestKeywords());
+    }
+    evidencePolicy.put("contextSources", List.of(
+        "PURCHASE_CLICK_DB",
+        "PERSONAL_WIKI_DB",
+        "CALENDAR_DB",
+        "PRODUCT_OFFER_DB",
+        "PRICE_HISTORY_DB"
+    ));
+    evidencePolicy.put("selectionMode", targetedSearch ? "QUERY_PRODUCT_SEARCH" : "PERSONALIZED_DB_CONTEXT");
+    if (targetedSearch) {
+      evidencePolicy.put("productQuery", productQuery);
+    }
     return new AgentContext(
-        context.summary(), context.dataMode(), focused, context.briefing(), context.evidencePolicy());
+        context.summary(), targetedSearch ? "LIVE_OR_PERSISTED" : context.dataMode(), focused,
+        context.briefing(), Map.copyOf(evidencePolicy));
   }
 
   private List<BriefingItem> focusRecommendations(List<BriefingItem> items, String query) {
     if (items.isEmpty() || query == null || query.isBlank()) {
       return items;
     }
-    Set<String> tokens = new HashSet<>();
-    Matcher matcher = QUERY_TOKEN.matcher(query.toLowerCase(Locale.ROOT));
-    while (matcher.find()) {
-      String token = matcher.group();
-      if (!GENERIC_QUERY_WORDS.contains(token)) {
-        tokens.add(token);
-      }
-    }
+    Set<String> tokens = queryTokens(query);
     if (tokens.isEmpty()) {
       return items;
     }
@@ -189,7 +212,45 @@ public class AgentBriefingHarness {
         focused.add(item);
       }
     }
-    return focused.isEmpty() ? items : focused;
+    return focused;
+  }
+
+  private Set<String> queryTokens(String query) {
+    Set<String> tokens = new LinkedHashSet<>();
+    if (query == null) {
+      return tokens;
+    }
+    Matcher matcher = QUERY_TOKEN.matcher(query.toLowerCase(Locale.ROOT));
+    while (matcher.find()) {
+      String token = matcher.group();
+      if (!isGenericQueryToken(token)) {
+        tokens.add(token);
+      }
+    }
+    return tokens;
+  }
+
+  private boolean isGenericQueryToken(String token) {
+    if (GENERIC_QUERY_WORDS.contains(token)) {
+      return true;
+    }
+    return containsAny(token,
+        "주문", "구매", "추천", "가격", "최저", "할인", "상품", "제품", "쇼핑",
+        "알려", "보여", "찾아", "골라", "사야", "살까", "사고", "필요", "준비",
+        "싶어", "할까", "해줘", "배송", "도착");
+  }
+
+  private boolean containsAny(String value, String... candidates) {
+    for (String candidate : candidates) {
+      if (value.contains(candidate)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private String productQuery(String query) {
+    return String.join(" ", queryTokens(query));
   }
 
   private String value(String value) {
@@ -260,6 +321,38 @@ public class AgentBriefingHarness {
       ));
     }
     return new ArrayList<>(result.values());
+  }
+
+  private List<BriefingItem> searchItems(List<ProductItem> products, LocalDate today) {
+    List<BriefingItem> result = new ArrayList<>();
+    for (ProductItem product : products) {
+      if (product == null || product.price() <= 0 || result.size() >= 6) {
+        continue;
+      }
+      PriceInsight insight = priceInsight(
+          product.source(), product.providerCode(), product.price(), null, today);
+      PurchaseDecision decision = priceDecision(insight);
+      result.add(new BriefingItem(
+          product.productSq(),
+          product.name(),
+          product.price(),
+          product.mallName(),
+          product.source(),
+          product.providerCode(),
+          product.imageUrl(),
+          product.productUrl(),
+          product.imageSources(),
+          "ORDER_RECOMMENDATION",
+          null,
+          null,
+          null,
+          decision.code(),
+          decision.label(),
+          priceNote(insight),
+          insight
+      ));
+    }
+    return List.copyOf(result);
   }
 
   private PriceInsight priceInsight(

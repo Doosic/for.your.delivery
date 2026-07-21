@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @SpringBootTest(properties = "delivery.openai.api-key=")
 @Transactional
@@ -158,7 +159,7 @@ class AgentServiceTest {
         org.mockito.ArgumentCaptor.forClass(Map.class);
     verify(openAiAgentClient).generate(eq(AgentTypeCode.BRIEFING_SHOPPING), contextCaptor.capture());
     assertThat(contextCaptor.getValue().toString())
-        .contains("l***@gmail.com", "010-****-5678")
+        .contains("l***@gmail.com", "010-****-5678", "USER_SCOPED_AGENT_MESSAGE_DB")
         .doesNotContain("lion4464@gmail.com", "010-1234-5678");
   }
 
@@ -175,6 +176,37 @@ class AgentServiceTest {
     );
 
     assertThat(result.assistantMessage().sourceAgent()).isEqualTo("BRIEFING_SHOPPING");
+  }
+
+  @Test
+  void rejectsOutOfScopeQuestionWithoutCallingModelOrHarness() {
+    UserEntity owner = createUser();
+    AgentSessionView session = agentService.createSession(owner.getUserSq(), null, null);
+
+    AgentService.AgentMessageResult result = agentService.sendMessage(
+        owner.getUserSq(), session.sessionSq(), "대한민국의 수도가 어디야?", Map.of());
+
+    assertThat(result.assistantMessage().sourceAgent()).isEqualTo("CONVERSATION_ORCHESTRATOR");
+    assertThat(result.assistantMessage().payload())
+        .containsEntry("status", "REJECTED_SCOPE")
+        .containsEntry("generationMode", "RULE_BASED");
+    assertThat(result.assistantMessage().text()).contains("상품 추천", "주문 시점", "배송 준비");
+    verifyNoInteractions(openAiAgentClient);
+    verifyNoInteractions(agentBriefingHarness);
+  }
+
+  @Test
+  void doesNotTreatGenericRecommendationWordAsShoppingIntent() {
+    UserEntity owner = createUser();
+    AgentSessionView session = agentService.createSession(owner.getUserSq(), null, null);
+
+    AgentService.AgentMessageResult result = agentService.sendMessage(
+        owner.getUserSq(), session.sessionSq(), "재미있는 영화를 추천해줘", Map.of());
+
+    assertThat(result.assistantMessage().payload()).containsEntry("status", "REJECTED_SCOPE");
+    assertThat(result.assistantMessage().payload().get("recommendations")).isEqualTo(java.util.List.of());
+    verifyNoInteractions(openAiAgentClient);
+    verifyNoInteractions(agentBriefingHarness);
   }
 
   private UserEntity createUser() {

@@ -1,5 +1,4 @@
 import api from '@/shared/libs/api.js'
-import { productService } from '@/services/productService.js'
 import { assertSuccessBody } from '@/shared/libs/api-result.js'
 
 const SESSION_KEY = 'fub-agent-session-sq'
@@ -25,6 +24,12 @@ const sendToAgent = async (sessionSq, message) => {
     context: { source: 'AI_BRIEFING' },
   })
   return assertSuccessBody(response, response.msg || 'fail')
+}
+
+const recommendationTitle = (sourceAgent) => {
+  if (sourceAgent === 'CALENDAR_PREPARATION') return '일정에 맞춘 주문 목록'
+  if (sourceAgent === 'PRICE_INTELLIGENCE') return '가격 기록 기반 추천'
+  return '구매 기록·위키 기반 추천'
 }
 
 export const agentService = {
@@ -53,28 +58,20 @@ export const agentService = {
         role: 'assistant',
         text: result.assistantMessage?.text ?? '요청을 확인했어요.',
         sourceAgent: result.assistantMessage?.sourceAgent,
+        status: result.assistantMessage?.payload?.status,
       }
-      const harnessItems = result.assistantMessage?.payload?.recommendations ?? []
+      const harnessItems = (result.assistantMessage?.payload?.recommendations ?? [])
+        .filter((item) => item?.productSq && item?.name)
       if (harnessItems.length) {
         return {
           ...body,
-          card: { title: '일정·가격 분석 추천', items: harnessItems.slice(0, 6) },
+          card: {
+            title: recommendationTitle(result.assistantMessage?.sourceAgent),
+            items: harnessItems.slice(0, 6),
+          },
         }
       }
-      try {
-        const products = await productService.search({ query: message, size: 4 })
-        const items = (products.items ?? []).map((product) => ({
-          ...product,
-          decision: 'PLAN',
-          label: '추천',
-        }))
-        return {
-          ...body,
-          card: items.length ? { title: '실제 판매 상품', items } : undefined,
-        }
-      } catch {
-        return { ...body, card: undefined }
-      }
+      return { ...body, card: undefined }
     } catch {
       return {
         role: 'assistant',

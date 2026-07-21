@@ -1,4 +1,4 @@
-import { CalendarClock, ExternalLink, SendHorizontal, TrendingDown } from 'lucide-react';
+import { CalendarClock, ExternalLink, LoaderCircle, SendHorizontal, TrendingDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { agentService } from '@/services/agentService.js';
@@ -37,6 +37,7 @@ function ProductRecommendation({ item, isLoggedIn, showDecision = false }) {
             src={imageUrl}
             srcSet={image2x && image2x !== imageUrl ? `${imageUrl} 1x, ${image2x} 2x` : undefined}
             alt=''
+            onError={(event) => event.currentTarget.classList.add('hidden')}
             className='h-12 w-12 shrink-0 rounded-md object-cover'
           />
         ) : (
@@ -107,6 +108,7 @@ function ChatPage() {
   const [briefing, setBriefing] = useState(EMPTY_BRIEFING);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     briefingService.getToday().then(setBriefing);
@@ -115,15 +117,20 @@ function ChatPage() {
   const handleSend = async (event) => {
     event.preventDefault();
     const text = input.trim();
-    if (!text) return;
+    if (!text || isSending) return;
     const userMessage = { id: Date.now(), role: 'user', text };
     setMessages((previous) => [...previous, userMessage]);
     setInput('');
-    const assistantMessage = await agentService.sendMessage(text);
-    setMessages((previous) => [
-      ...previous,
-      { id: Date.now() + 1, ...assistantMessage },
-    ]);
+    setIsSending(true);
+    try {
+      const assistantMessage = await agentService.sendMessage(text);
+      setMessages((previous) => [
+        ...previous,
+        { id: Date.now() + 1, ...assistantMessage },
+      ]);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -132,7 +139,7 @@ function ChatPage() {
         <h1 className='text-xl font-semibold'>
           좋은 아침이에요, {isLoggedIn ? `${user?.name}님` : '게스트님'}
         </h1>
-        <p className='mt-1 text-sm text-slate-500'>오늘의 브리핑</p>
+        <p className='mt-1 text-sm text-slate-500'>상품 추천 · 가격 비교 · 주문 시점 · 배송 준비</p>
       </header>
 
       <div className='flex-1 space-y-3 overflow-y-auto pb-4'>
@@ -209,16 +216,23 @@ function ChatPage() {
       >
         <input
           className='h-11 min-w-0 flex-1 rounded-full border border-slate-300 bg-white px-4 text-sm outline-none placeholder:text-slate-400 focus:border-cyan-600 focus:ring-2 focus:ring-cyan-100'
-          placeholder='메시지를 입력하세요'
+          placeholder='주문할 상품이나 준비할 일정을 입력하세요'
+          aria-label='구매 질문'
           value={input}
           onChange={(event) => setInput(event.target.value)}
+          disabled={isSending}
         />
         <button
           type='submit'
-          className='grid h-11 w-11 shrink-0 place-items-center rounded-full bg-cyan-700 text-white transition hover:bg-cyan-800'
+          disabled={isSending || !input.trim()}
+          className='grid h-11 w-11 shrink-0 place-items-center rounded-full bg-cyan-700 text-white transition hover:bg-cyan-800 disabled:cursor-not-allowed disabled:bg-slate-300'
           aria-label='보내기'
         >
-          <SendHorizontal size={18} />
+          {isSending ? (
+            <LoaderCircle size={18} className='animate-spin' aria-hidden='true' />
+          ) : (
+            <SendHorizontal size={18} aria-hidden='true' />
+          )}
         </button>
       </form>
     </div>

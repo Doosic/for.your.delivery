@@ -4,6 +4,8 @@ import com.foryour.delivery.client.calendar.GoogleCalendarService;
 import com.foryour.delivery.client.product.ProductModels.HomeFeedResponse;
 import com.foryour.delivery.client.product.ProductModels.ImageSources;
 import com.foryour.delivery.client.product.ProductModels.ProductFeedItem;
+import com.foryour.delivery.client.product.ProductModels.ProductItem;
+import com.foryour.delivery.client.product.ProductModels.SearchResponse;
 import com.foryour.delivery.client.product.ProductService;
 import com.foryour.delivery.domain.entity.ProductOfferEntity;
 import com.foryour.delivery.domain.entity.ProductPriceHistoryEntity;
@@ -116,6 +118,39 @@ class AgentBriefingHarnessTest {
     assertThat(focused.recommendations())
         .extracting(AgentBriefingHarness.BriefingItem::name)
         .containsExactly("캠핑 랜턴");
+  }
+
+  @Test
+  void searchesRequestedProductAndReturnsDbEvidenceWhenBriefingHasNoMatch() {
+    LocalDate today = LocalDate.now();
+    given(productService.homeFeed(7L)).willReturn(new HomeFeedResponse(
+        true, List.of(), true, true, "PURCHASE_HISTORY", List.of("생활용품"),
+        List.of(), List.of()));
+    given(googleCalendarService.storedSuggestions(eq(7L), eq(today), eq(today.plusDays(30))))
+        .willReturn(new GoogleCalendarService.CalendarResult(false, true, List.of(), null));
+    ProductItem detergent = new ProductItem(
+        "NAVER-DETERGENT-1", "고농축 세탁세제", 12_900, "네이버쇼핑", "NAVER",
+        "image", "url", "DETERGENT-1", List.of("생활용품", "세제"),
+        new ImageSources("card", "card2x", "detail", "original"),
+        "", "", "", false);
+    given(productService.searchForUser(7L, "세탁세제", 6, "LOW_PRICE"))
+        .willReturn(new SearchResponse(
+            "세탁세제", true, List.of("NAVER"), List.of(), List.of(), List.of(),
+            List.of(detergent)));
+    given(productOfferRepository.findByProviderAndExternalProductId("NAVER", "DETERGENT-1"))
+        .willReturn(Optional.empty());
+
+    AgentBriefingHarness.AgentContext result = harness.contextFor(
+        7L, AgentTypeCode.BRIEFING_SHOPPING, "세탁세제 주문해줘");
+
+    assertThat(result.recommendations())
+        .extracting(AgentBriefingHarness.BriefingItem::productSq)
+        .containsExactly("NAVER-DETERGENT-1");
+    assertThat(result.evidencePolicy())
+        .containsEntry("selectionMode", "QUERY_PRODUCT_SEARCH")
+        .containsEntry("recommendationBasis", "PURCHASE_HISTORY");
+    assertThat(result.evidencePolicy().get("contextSources").toString())
+        .contains("PURCHASE_CLICK_DB", "PRICE_HISTORY_DB");
   }
 
   private ProductOfferEntity offer(Long offerSq, String providerCode) {
